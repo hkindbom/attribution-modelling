@@ -1,5 +1,5 @@
 # Optimal Marketing
-![Hedvig logo](https://https://github.com/hkindbom/optimal-marketing/blob/master/hedvig_logo.png?raw=true)
+![Hedvig logo](https://https://github.com/hkindbom/optimal-marketing/blob/master/hedvig_logo.png)
 
 Repository for master thesis at KTH during the spring 2021, 
 in collaboration with Hedvig.
