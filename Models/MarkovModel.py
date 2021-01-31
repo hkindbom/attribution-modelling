@@ -47,7 +47,7 @@ def load_dataframe(data_file_path):
     return dataframe
 
 if __name__ == '__main__':
-    data_file_path = '../Data/sample-data-conversion-paths.csv'
+    data_file_path = '../Data/GA_data_processed.csv'#'../Data/sample-data-conversion-paths.csv'
 
     dataframe = load_dataframe(data_file_path)
     markov_model = MarkovModel(dataframe)
