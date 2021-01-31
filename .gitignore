@@ -2,3 +2,5 @@
 /venv
 /Data
 __pycache__/
+.idea
+*.csv
