@@ -4,13 +4,13 @@ from datetime import timedelta
 
 class DataProcessing:
     def __init__(self, file_path_GA_main = None, file_path_GA_secondary = None, file_path_mixpanel = None, save_to_path = None):
-        self.GA_dataframe = None
+        self.GA_df = None
+        self.MP_df = None
+        self.converted_clients_df = None
         self.file_path_GA_main = file_path_GA_main
         self.file_path_GA_secondary = file_path_GA_secondary
         self.file_path_mixpanel = file_path_mixpanel
         self.save_to_path = save_to_path
-        self.mixpanel_df = None
-        self.converted_clients_df = None
 
     def process_individual_data(self):
         df1 = pd.read_csv(self.file_path_GA_main, header=5, dtype={'cllientId': str}) ##KOM ihåg ändra header=5
@@ -30,12 +30,12 @@ class DataProcessing:
         df['timestamp'] = pd.to_datetime(df['timestamp'])
         df['conversion_value'] = df['conversion_value'].str.replace('SEK','').astype(float)
 
-        self.GA_dataframe = df
+        self.GA_df = df
 
     #def filter_journey_length(self):
 
     def group_by_client_id(self):
-        df = self.GA_dataframe.sort_values(by=['client_id', 'timestamp'], ascending=True)
+        df = self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
         df = df.set_index(['client_id', 'session_id'])
         df['converted_eventually'] = 0
 
@@ -43,10 +43,10 @@ class DataProcessing:
             if max(temp_df['conversion']) == 1:
                 df.loc[str(client), 'converted_eventually'] = 1
 
-        self.GA_dataframe = df
+        self.GA_df = df
 
     def remove_post_conversion(self):
-        df = self.GA_dataframe
+        df = self.GA_df
         conversion_sessions = df.loc[df['converted_eventually'] == 1]
         sessions_to_delete = df[0:0]
 
@@ -56,7 +56,7 @@ class DataProcessing:
                 post_conversion = cust_journey.loc[cust_journey['timestamp'] > conversion_time]
                 if not post_conversion.empty:
                     sessions_to_delete = sessions_to_delete.append(post_conversion)
-        self.GA_dataframe = pd.concat([df, sessions_to_delete, sessions_to_delete]).drop_duplicates(keep=False)
+        self.GA_df = pd.concat([df, sessions_to_delete, sessions_to_delete]).drop_duplicates(keep=False)
 
     def process_aggregated_data(self):
         df = pd.read_csv(self.file_path_GA_main, header=5)
@@ -67,7 +67,7 @@ class DataProcessing:
         df['total_conversions'] = df['total_conversions'].str.replace('\s+', '').astype(int)
         df['total_conversion_value'] = df['total_conversion_value'].str.rstrip('kr').\
             str.replace(',','.').str.replace('\s+','').astype(float)
-        self.GA_dataframe = df
+        self.GA_df = df
 
     def process_mixpanel_data(self, start_time = pd.Timestamp(2017,1,1), convert_to_float=True):
         df = pd.read_csv(self.file_path_mixpanel)
@@ -102,13 +102,13 @@ class DataProcessing:
             df['nr_failed_charges'] = pd.to_numeric(df['nr_failed_charges'], errors='coerce').fillna(0)
             df['nr_co_insured'] = pd.to_numeric(df['nr_co_insured'], errors='coerce').fillna(0)
 
-        self.mixpanel_df = df
+        self.MP_df = df
 
     def create_converted_clients_df(self, minute_margin = 1, premium_margin = 10):
         #self.merged_df[list(self.mixpanel_df.columns)] = pd.DataFrame([[np.nan]*len(self.mixpanel_df.columns)])
-        self.converted_clients_df = pd.DataFrame(columns=['client_id'] + list(self.mixpanel_df.columns))
+        self.converted_clients_df = pd.DataFrame(columns=['client_id'] + list(self.MP_df.columns))
 
-        conversion_sessions_df = self.GA_dataframe.loc[self.GA_dataframe['conversion'] == 1]
+        conversion_sessions_df = self.GA_df.loc[self.GA_df['conversion'] == 1]
         for client, conversion_session in conversion_sessions_df.iterrows():
             self.match_client(client, conversion_session, minute_margin, premium_margin)
         print(self.converted_clients_df.head(10))
@@ -119,8 +119,8 @@ class DataProcessing:
         starttime = conversion_time - timedelta(minutes = minute_margin)
         endtime = conversion_time + timedelta(minutes = minute_margin)
 
-        mixpanel_user = self.mixpanel_df.loc[(self.mixpanel_df['signup_time'] > starttime) &
-                                             (self.mixpanel_df['signup_time'] < endtime)]
+        mixpanel_user = self.MP_df.loc[(self.MP_df['signup_time'] > starttime) &
+                                       (self.MP_df['signup_time'] < endtime)]
 
         if len(mixpanel_user) == 0:
             return
@@ -143,70 +143,87 @@ class DataProcessing:
 
 
     def save_to_csv(self):
-        self.GA_dataframe.to_csv(self.save_to_path, sep=',')
+        self.GA_df.to_csv(self.save_to_path, sep=',')
 
     def get_GA_df(self):
-        return self.GA_dataframe
+        return self.GA_df
 
-    def get_mixpanel_df(self):
-        return self.mixpanel_df
+    def get_MP_df(self):
+        return self.MP_df
 
+    def get_converted_clients_df(self):
+        return self.converted_clients_df
+
+    def get_client_mixpanel_info(self, client):
+        return self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client]
 
 class Descriptives:
-    def __init__(self, dataframe):
-        self.dataframe = dataframe
+
+    def __init__(self, start_time, file_path_GA_main = None, file_path_GA_secondary = None, file_path_mp = None):
+        self.start_time = start_time
+        self.data_processing = DataProcessing(file_path_GA_main, file_path_GA_secondary, file_path_mp)
+        self.GA_df = None
+        self.MP_df = None
+        self.converted_clients_df = None
+        self.read_data()
+
+    def read_data(self):
+        self.data_processing.process_individual_data()
+        self.data_processing.group_by_client_id()
+        self.data_processing.remove_post_conversion()
+        self.data_processing.process_mixpanel_data(self.start_time)
+        self.data_processing.create_converted_clients_df()
+
+        self.GA_df = self.data_processing.get_GA_df()
+        self.MP_df = self.data_processing.get_MP_df()
+        self.converted_clients_df = self.data_processing.get_converted_clients_df()
 
     #def number_conversions(self):
         ##
 
-    def plot_age_dist(dataframe):
+    def plot_age_dist_MP(self):
         fig, ax = plt.subplots()
-        dataframe['age'].value_counts().plot(ax=ax, kind='bar')
+        self.MP_df['age'].value_counts().plot(ax=ax, kind='bar')
         plt.title('Age distribution - Hedvig users')
         plt.show()
 
-    def plot_premium_dist(dataframe):
+    def plot_premium_dist_MP(self):
         fig, ax = plt.subplots()
-        dataframe = dataframe.sort_values(by=['premium'], ascending=False)
-        dataframe['premium'].value_counts().plot(ax=ax, kind='bar')
+        self.MP_df = self.MP_df.sort_values(by=['premium'], ascending=False)
+        self.MP_df['premium'].value_counts().plot(ax=ax, kind='bar')
         plt.title('Premium distribution - Hedvig users')
         plt.show()
 
-    def plot_premium_age(dataframe):
-        plt.scatter(dataframe['age'], dataframe['premium'])
+    def plot_premium_age_MP(self):
+        plt.scatter(self.MP_df['age'], self.MP_df['premium'])
         plt.title("Premium over age")
         plt.xlabel("age")
         plt.ylabel("premium")
         plt.show()
 
-    def show_interesting_results(dataframe):
-        plot_premium_age(dataframe)
-        plot_age_dist(dataframe)
-        plot_premium_dist(dataframe)
+    def show_interesting_results_MP(self):
+        self.plot_premium_age_MP()
+        self.plot_age_dist_MP()
+        self.plot_premium_dist_MP()
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_1 = '../Data/Analytics_sample_1.csv'
-    file_path_2 = '../Data/Analytics_sample_2.csv'
+    file_path_GA_main = '../Data/Analytics_sample_1.csv'
+    file_path_GA_secondary = '../Data/Analytics_sample_2.csv'
     file_path_mp = '../Data/Mixpanel_data_2021-02-03.csv'
-    start_time = pd.Timestamp(2021, 2, 2)
-    data_processing = DataProcessing(file_path_1, file_path_2, file_path_mp)
-    data_processing.process_individual_data()
-    data_processing.group_by_client_id()
-    data_processing.remove_post_conversion()
+
     #data_processing.save_to_csv()
-    data_processing.process_mixpanel_data()
-    data_processing.create_converted_clients_df()
     #df = data_processing.get_mixpanel_df()
-    #show_interesting_results(dataframe)
+
+    descriptives = Descriptives(pd.Timestamp(2021,2,1), file_path_GA_main, file_path_GA_secondary, file_path_mp)
+    descriptives.show_interesting_results_MP()
 
 ## exploratory data analysis class (Descriptives); sum number of conversions, total conversion value...
 ## (make function that gets client, returns dataframe with unique user_ids)
 ## chart (e.g. PyChart) with percentage conversions etc.
 ## ranked channels
 ## distribution of path length
-## move stuff to if __name__ == '__main__'
 
 ## integration with MarkovModel file, create DataProcessing object, return df instead of read csv
