@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 from datetime import timedelta
 
 class DataProcessing:
-    def __init__(self, file_path_GA_main = None, file_path_GA_secondary = None, file_path_mixpanel = None, file_path_GA_aggregated = None, save_to_path = None):
+    def __init__(self, file_path_GA_main = None, file_path_GA_secondary = None, file_path_mixpanel = None,
+                 file_path_GA_aggregated = None, save_to_path = None):
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
@@ -65,12 +66,13 @@ class DataProcessing:
                                 'Konverteringar': 'total_conversions',
                                 'Konverteringsvärde': 'total_conversion_value'})
         df['total_null'] = 0
-        df['total_conversions'] = df['total_conversions'].str.replace('\s+', '').astype(int)
+        df['total_conversions'] = df['total_conversions'].str.replace('\s+', '', regex=True).astype(int)
         df['total_conversion_value'] = df['total_conversion_value'].str.rstrip('kr').\
-            str.replace(',','.').str.replace('\s+','').astype(float)
+            str.replace(',','.', regex=True).str.replace('\s+','', regex=True).astype(float)
         self.GA_aggregated_df = df
 
-    def process_mixpanel_data(self, start_time = pd.Timestamp(2017,1,1), convert_to_float=True):
+    def process_mixpanel_data(self, start_time = pd.Timestamp(year = 2021, month = 2, day = 1, tz='UTC'),
+                              convert_to_float=True):
         df = pd.read_csv(self.file_path_mixpanel)
 
         df = df[df['$properties.$created_at'] != 'undefined'] # Filter out non-singups
@@ -152,6 +154,9 @@ class DataProcessing:
 
     def get_MP_df(self):
         return self.MP_df
+
+    def get_GA_aggr_df(self):
+        return self.GA_aggregated_df
 
     def get_converted_clients_df(self):
         return self.converted_clients_df
