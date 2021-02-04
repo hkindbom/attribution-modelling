@@ -16,7 +16,7 @@ class DataProcessing:
         self.save_to_path = save_to_path
 
     def process_individual_data(self):
-        df1 = pd.read_csv(self.file_path_GA_main, header=5, dtype={'cllientId': str}) ##KOM ihåg ändra header=5
+        df1 = pd.read_csv(self.file_path_GA_main, header=5, dtype={'cllientId': str}) ##Remember to change header=5
         df2 = pd.read_csv(self.file_path_GA_secondary, header=5, dtype={'cllientId': str})
         cols_to_use = df2.columns.difference(df1.columns)
         df = pd.merge(df1, df2[cols_to_use], left_index=True, right_index=True, how='outer')
@@ -191,7 +191,7 @@ class Descriptives:
         for client, path in conversion_paths.groupby(level=0):
             path_lengths.append(len(path))
         temp_df = pd.DataFrame({'freq': path_lengths})
-        temp_df.groupby('freq', as_index=False).size().plot(kind='bar')
+        temp_df.groupby('freq', as_index=False).size().plot(x='freq', y='size', kind='bar')
         plt.title('Conversion path lengths')
         plt.xlabel('Length')
         plt.ylabel('Frequency')
@@ -281,5 +281,3 @@ if __name__ == '__main__':
 
     descriptives = Descriptives(pd.Timestamp(year = 2021, month = 2, day = 1, tz='UTC'), file_path_GA_main, file_path_GA_secondary, file_path_mp)
     descriptives.show_interesting_results_GA()
-
-## integration with MarkovModel file, create DataProcessing object, return df instead of read csv
