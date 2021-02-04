@@ -178,8 +178,55 @@ class Descriptives:
         self.MP_df = self.data_processing.get_MP_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
 
-    #def number_conversions(self):
-        ##
+    def plot_path_length_GA(self):
+        conversion_paths = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
+        path_lengths = []
+        for client, path in conversion_paths.groupby(level=0):
+            path_lengths.append(len(path))
+        temp_df = pd.DataFrame({'freq': path_lengths})
+        temp_df.groupby('freq', as_index=False).size().plot(kind='bar')
+        plt.title('Conversion path lengths')
+        plt.xlabel('Length')
+        plt.ylabel('Frequency')
+        plt.show()
+
+    def plot_path_duration_GA(self, nr_bars = 10):
+        conversion_paths = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
+        path_duration = []
+        for client, path in conversion_paths.groupby(level=0):
+            path_duration.append((path['timestamp'][-1] - path['timestamp'][0]).total_seconds()/(3600*24))
+        plt.hist(path_duration, nr_bars)
+        plt.title('Conversion path duration')
+        plt.xlabel('Length [days]')
+        plt.ylabel('Frequency')
+        plt.show()
+
+    def plot_channel_conversion_frequency_GA(self, normalize = True):
+        non_conversion_paths = self.GA_df.loc[self.GA_df['converted_eventually'] == 0]
+        conversion_paths = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
+        conversion_paths_not_last = conversion_paths.loc[conversion_paths['conversion'] == 0]
+        conversion_paths_last = conversion_paths.loc[conversion_paths['conversion'] == 1]
+
+        occur_per_channel_non_conv = non_conversion_paths['source_medium'].value_counts()
+        occur_per_channel_conv_last = conversion_paths_last['source_medium'].value_counts()
+        occur_per_channel_conv_not_last = conversion_paths_not_last['source_medium'].value_counts()
+
+        if normalize:
+            occur_per_channel_conv_last = occur_per_channel_conv_last / occur_per_channel_conv_last.sum()
+            occur_per_channel_non_conv = occur_per_channel_non_conv/occur_per_channel_non_conv.sum()
+            occur_per_channel_conv_not_last = occur_per_channel_conv_not_last / occur_per_channel_conv_not_last.sum()
+
+        df = pd.DataFrame({"Conversions last": occur_per_channel_conv_last,
+                           "Conversions not last": occur_per_channel_conv_not_last,
+                          "Non-conversion any time": occur_per_channel_non_conv})
+        ax = df.plot.bar(title="Source/medium occurences in paths")
+        ax.set_xlabel("Source / Medium")
+        if normalize:
+            ax.set_ylabel("Proportion")
+        else:
+            ax.set_ylabel("Counts")
+        plt.tight_layout()
+        plt.show()
 
     def plot_age_dist_MP(self):
         fig, ax = plt.subplots()
@@ -206,6 +253,14 @@ class Descriptives:
         self.plot_age_dist_MP()
         self.plot_premium_dist_MP()
 
+    def show_interesting_results_GA(self):
+        self.plot_channel_conversion_frequency_GA()
+        self.plot_path_length_GA()
+        self.plot_path_duration_GA()
+
+    def show_interesting_results_combined(self):
+        pass
+
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
@@ -218,7 +273,7 @@ if __name__ == '__main__':
     #df = data_processing.get_mixpanel_df()
 
     descriptives = Descriptives(pd.Timestamp(2021,2,1), file_path_GA_main, file_path_GA_secondary, file_path_mp)
-    descriptives.show_interesting_results_MP()
+    descriptives.show_interesting_results_GA()
 
 ## exploratory data analysis class (Descriptives); sum number of conversions, total conversion value...
 ## (make function that gets client, returns dataframe with unique user_ids)
