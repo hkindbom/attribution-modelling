@@ -3,13 +3,15 @@ import matplotlib.pyplot as plt
 from datetime import timedelta
 
 class DataProcessing:
-    def __init__(self, file_path_GA_main = None, file_path_GA_secondary = None, file_path_mixpanel = None, save_to_path = None):
+    def __init__(self, file_path_GA_main = None, file_path_GA_secondary = None, file_path_mixpanel = None, file_path_GA_aggregated = None, save_to_path = None):
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
+        self.GA_aggregated_df = None
         self.file_path_GA_main = file_path_GA_main
         self.file_path_GA_secondary = file_path_GA_secondary
         self.file_path_mixpanel = file_path_mixpanel
+        self.file_path_GA_aggregated = file_path_GA_aggregated
         self.save_to_path = save_to_path
 
     def process_individual_data(self):
@@ -27,12 +29,11 @@ class DataProcessing:
                                 'Signed Customer (Goal 1 Completions)': 'conversion',
                                 'Signed Customer (Goal 1 Value)': 'conversion_value',
                                 'Device Category': 'device_category'})
-        df['timestamp'] = pd.to_datetime(df['timestamp'])
+        ## Be aware! Check time zones Daylight Savings Time (GA vs. MP)
+        df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
         df['conversion_value'] = df['conversion_value'].str.replace('SEK','').astype(float)
 
         self.GA_df = df
-
-    #def filter_journey_length(self):
 
     def group_by_client_id(self):
         df = self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
@@ -59,7 +60,7 @@ class DataProcessing:
         self.GA_df = pd.concat([df, sessions_to_delete, sessions_to_delete]).drop_duplicates(keep=False)
 
     def process_aggregated_data(self):
-        df = pd.read_csv(self.file_path_GA_main, header=5)
+        df = pd.read_csv(self.file_path_GA_aggregated, header=5)
         df = df.rename(columns={'Väg till konvertering per källa': 'path',
                                 'Konverteringar': 'total_conversions',
                                 'Konverteringsvärde': 'total_conversion_value'})
@@ -67,13 +68,12 @@ class DataProcessing:
         df['total_conversions'] = df['total_conversions'].str.replace('\s+', '').astype(int)
         df['total_conversion_value'] = df['total_conversion_value'].str.rstrip('kr').\
             str.replace(',','.').str.replace('\s+','').astype(float)
-        self.GA_df = df
+        self.GA_aggregated_df = df
 
     def process_mixpanel_data(self, start_time = pd.Timestamp(2017,1,1), convert_to_float=True):
         df = pd.read_csv(self.file_path_mixpanel)
 
-        # Filter out non-singups
-        df = df[df['$properties.$created_at'] != 'undefined']
+        df = df[df['$properties.$created_at'] != 'undefined'] # Filter out non-singups
 
         df = df.rename(columns={'$distinct_id': 'user_id',
                                 '$properties.$city': 'city',
@@ -89,9 +89,10 @@ class DataProcessing:
                                 '$properties.$termination_date': 'termination_date',
                                 '$properties.$timezone': 'timezone',
                                 '$properties.$zip_code': 'zip'})
+        ## Be aware! Check time zones Daylight Savings Time (GA vs. MP)
+        df['signup_time'] = pd.to_datetime(df['signup_time'], errors='coerce').dt.tz_localize('Europe/Oslo', ambiguous = False)
 
-        df['signup_time'] = pd.to_datetime(df['signup_time'], errors='coerce')
-        df['termination_date'] = pd.to_datetime(df['termination_date'], errors='coerce')
+        df['termination_date'] = pd.to_datetime(df['termination_date'], errors='coerce').dt.tz_localize('Europe/Oslo', ambiguous = False)
 
         df = df.loc[df['signup_time'] >= start_time]
 
@@ -104,23 +105,23 @@ class DataProcessing:
 
         self.MP_df = df
 
-    def create_converted_clients_df(self, minute_margin = 1, premium_margin = 10):
-        #self.merged_df[list(self.mixpanel_df.columns)] = pd.DataFrame([[np.nan]*len(self.mixpanel_df.columns)])
+    def create_converted_clients_df(self, minute_margin = 1.5, premium_margin = 10):
         self.converted_clients_df = pd.DataFrame(columns=['client_id'] + list(self.MP_df.columns))
 
         conversion_sessions_df = self.GA_df.loc[self.GA_df['conversion'] == 1]
         for client, conversion_session in conversion_sessions_df.iterrows():
             self.match_client(client, conversion_session, minute_margin, premium_margin)
-        print(self.converted_clients_df.head(10))
+        nr_conversions = len(self.GA_df.loc[self.GA_df['conversion'] == 1])
+        print('Matched ', len(self.converted_clients_df), ' users of ', nr_conversions)
 
 
     def match_client(self, client, conversion_session, minute_margin, premium_margin):
-        conversion_time = pd.to_datetime(conversion_session['timestamp'].strftime('%Y-%m-%d %H:%M:%S'))
+        conversion_time = pd.to_datetime(conversion_session['timestamp'].strftime('%Y-%m-%d %H:%M:%S'), utc=True)
         starttime = conversion_time - timedelta(minutes = minute_margin)
         endtime = conversion_time + timedelta(minutes = minute_margin)
 
-        mixpanel_user = self.MP_df.loc[(self.MP_df['signup_time'] > starttime) &
-                                       (self.MP_df['signup_time'] < endtime)]
+        mixpanel_user = self.MP_df.loc[(self.MP_df['signup_time'] >= starttime) &
+                                       (self.MP_df['signup_time'] <= endtime)]
 
         if len(mixpanel_user) == 0:
             return
@@ -132,10 +133,11 @@ class DataProcessing:
         if len(mixpanel_user) > 1:  ## If multiple measures
             lower_premium = conversion_session['conversion_value'] - premium_margin
             upper_premium = conversion_session['conversion_value'] + premium_margin
-            mixpanel_user = mixpanel_user.loc[(mixpanel_user['premium'] > lower_premium) &
-                                              (mixpanel_user['premium'] < upper_premium)]
+            mixpanel_user = mixpanel_user.loc[(mixpanel_user['premium'] >= lower_premium) &
+                                              (mixpanel_user['premium'] <= upper_premium)]
             if len(mixpanel_user) == 1:
                 self.append_matching_client(mixpanel_user, client)
+                return
 
     def append_matching_client(self, mixpanel_user, client):
         mixpanel_user.insert(0, 'client_id', client[0])
@@ -267,18 +269,12 @@ if __name__ == '__main__':
 
     file_path_GA_main = '../Data/Analytics_sample_1.csv'
     file_path_GA_secondary = '../Data/Analytics_sample_2.csv'
-    file_path_mp = '../Data/Mixpanel_data_2021-02-03.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-02-04.csv'
 
     #data_processing.save_to_csv()
     #df = data_processing.get_mixpanel_df()
 
-    descriptives = Descriptives(pd.Timestamp(2021,2,1), file_path_GA_main, file_path_GA_secondary, file_path_mp)
+    descriptives = Descriptives(pd.Timestamp(year = 2021, month = 2, day = 1, tz='UTC'), file_path_GA_main, file_path_GA_secondary, file_path_mp)
     descriptives.show_interesting_results_GA()
-
-## exploratory data analysis class (Descriptives); sum number of conversions, total conversion value...
-## (make function that gets client, returns dataframe with unique user_ids)
-## chart (e.g. PyChart) with percentage conversions etc.
-## ranked channels
-## distribution of path length
 
 ## integration with MarkovModel file, create DataProcessing object, return df instead of read csv
