@@ -2,6 +2,7 @@ from ChannelAttribution import markov_model
 from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
+from DataProcessing import DataProcessing
 
 class MarkovModel:
     def __init__(self, dataframe, order, show_top_results=False):
@@ -55,20 +56,14 @@ class MarkovModel:
         plt.savefig('../Plots/Markov_model_order_' + str(self.order) + '_' + str(datetime.now()).replace(' ','_').replace(':','_') + '.png', dpi=200)
         plt.show()
 
-
-
-def load_dataframe(data_file_path):
-    dataframe = pd.read_csv(data_file_path, delimiter=';')
-    print(dataframe.dtypes)
-    if 'total_null' not in dataframe:
-        dataframe['total_null'] = 0
-    return dataframe
-
 if __name__ == '__main__':
-    data_file_path = '../Data/channel_journey_data_processed.csv'
+    file_path_GA_aggregated = '../Data/Analytics_raw_data_sample.csv'
+
+    data_processing = DataProcessing(file_path_GA_aggregated = file_path_GA_aggregated)
+    data_processing.process_aggregated_data()
+    dataframe = data_processing.get_GA_aggr_df()
     order = 3
     show_top_results = True
-    dataframe = load_dataframe(data_file_path)
     markovmodel = MarkovModel(dataframe, order, show_top_results)
     markovmodel.train_all()
     markovmodel.show_results()
