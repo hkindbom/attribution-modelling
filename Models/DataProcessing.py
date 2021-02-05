@@ -1,6 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import numpy as np
 from datetime import timedelta
+#from sklearn.neighbors import KernelDensity
+
 
 class DataProcessing:
     def __init__(self, file_path_GA_main = None, file_path_GA_secondary = None, file_path_mixpanel = None,
@@ -71,8 +74,8 @@ class DataProcessing:
             str.replace(',','.', regex=True).str.replace('\s+','', regex=True).astype(float)
         self.GA_aggregated_df = df
 
-    def process_mixpanel_data(self, start_time = pd.Timestamp(year = 2021, month = 2, day = 1, tz='UTC'),
-                              convert_to_float=True):
+    def process_mixpanel_data(self, start_time = pd.Timestamp(year = 2021, month = 2, day = 1, tz = 'UTC'),
+                              convert_to_float = True, market = 'SE'):
         df = pd.read_csv(self.file_path_mixpanel)
 
         df = df[df['$properties.$created_at'] != 'undefined'] # Filter out non-singups
@@ -87,7 +90,6 @@ class DataProcessing:
                                 '$properties.$market': 'market',
                                 '$properties.$number_co_insured': 'nr_co_insured',
                                 '$properties.$number_failed_charges': 'nr_failed_charges',
-                                '$properties.$street': 'street',
                                 '$properties.$termination_date': 'termination_date',
                                 '$properties.$timezone': 'timezone',
                                 '$properties.$zip_code': 'zip'})
@@ -96,7 +98,9 @@ class DataProcessing:
 
         df['termination_date'] = pd.to_datetime(df['termination_date'], errors='coerce').dt.tz_localize('Europe/Oslo', ambiguous = False)
 
-        df = df.loc[df['signup_time'] >= start_time]
+        df = df.loc[df['signup_time'] >= start_time]  ## Filter by signup time
+
+        df = df.loc[df['market'] == market]  ## Filter by regional market
 
         if convert_to_float:
             df['premium'] = pd.to_numeric(df['premium'], errors='coerce')
@@ -225,7 +229,8 @@ class Descriptives:
 
         df = pd.DataFrame({"Conversions last": occur_per_channel_conv_last,
                            "Conversions not last": occur_per_channel_conv_not_last,
-                          "Non-conversion any time": occur_per_channel_non_conv})
+                           "Non-conversion any time": occur_per_channel_non_conv})
+        print(df)
         ax = df.plot.bar(title="Source/medium occurences in paths")
         ax.set_xlabel("Source / Medium")
         if normalize:
@@ -255,6 +260,27 @@ class Descriptives:
         plt.ylabel("premium")
         plt.show()
 
+    def plot_user_conversions_not_last_against_source(self, column, nr_channels = 5):
+        conversion_paths_not_last_df = self.GA_df.loc[(self.GA_df['converted_eventually'] == 1) &
+                                                   (self.GA_df['conversion'] == 0)]
+        channels = conversion_paths_not_last_df['source_medium'].value_counts()[:nr_channels]
+        #channels.append(.... studentkortet t.ex.)
+        #plot_data_per_channel = {}
+        plot_data_per_channel = []
+        for channel, _ in channels.iteritems():
+            client_indexes = conversion_paths_not_last_df.loc[conversion_paths_not_last_df['source_medium'] == channel].index
+            client_ids = [client_id[0] for client_id in client_indexes]
+            user_data = self.converted_clients_df[self.converted_clients_df['client_id'].isin(client_ids)][column]
+            #plot_data_per_channel[channel] = user_data
+            plot_data_per_channel.append(user_data)
+        labels = list(channels.index)
+        x, bins, p = plt.hist(plot_data_per_channel, density=False, label=labels)
+        plt.legend()
+        plt.title(column.capitalize() + ' per non-last conversion channel')
+        plt.xlabel(column.capitalize())
+        plt.ylabel('Counts')
+        plt.show()
+
     def show_interesting_results_MP(self):
         self.plot_premium_age_MP()
         self.plot_age_dist_MP()
@@ -266,6 +292,7 @@ class Descriptives:
         self.plot_path_duration_GA()
 
     def show_interesting_results_combined(self):
+        self.plot_user_conversions_not_last_against_source('premium')
         pass
 
 if __name__ == '__main__':
@@ -274,10 +301,10 @@ if __name__ == '__main__':
 
     file_path_GA_main = '../Data/Analytics_sample_1.csv'
     file_path_GA_secondary = '../Data/Analytics_sample_2.csv'
-    file_path_mp = '../Data/Mixpanel_data_2021-02-04.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-02-05.csv'
 
     #data_processing.save_to_csv()
     #df = data_processing.get_mixpanel_df()
 
     descriptives = Descriptives(pd.Timestamp(year = 2021, month = 2, day = 1, tz='UTC'), file_path_GA_main, file_path_GA_secondary, file_path_mp)
-    descriptives.show_interesting_results_GA()
+    descriptives.show_interesting_results_combined()
