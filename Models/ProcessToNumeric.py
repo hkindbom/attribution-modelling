@@ -6,7 +6,6 @@ class ProcessToNumeric:
         self.data_processing = DataProcessing(file_path_GA_main, file_path_GA_secondary, file_path_mp)
         self.start_time = start_time
         self.GA_df = None
-        self.MP_df = None
         self.converted_clients_df = None
         self.clients_dict = {}
         self.ch_to_idx = {}
@@ -20,7 +19,6 @@ class ProcessToNumeric:
         self.data_processing.create_converted_clients_df()
 
         self.GA_df = self.data_processing.get_GA_df()
-        self.MP_df = self.data_processing.get_MP_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
 
     def create_clients_dict(self):
