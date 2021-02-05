@@ -39,6 +39,7 @@ class ProcessToNumeric:
             client_dict = clients_dict_raw[client_id]
             self.process_client_dict(client_dict, client_id)
 
+    # Note that lists are not sorted on time
     def process_client_dict(self, client_dict, client_id):
         client_sessions = list(client_dict['sessions'].keys())
 
@@ -68,6 +69,9 @@ class ProcessToNumeric:
         if client_id in self.converted_clients_df['client_id'].values:
             return True
         return False
+
+    def get_clients_dict(self):
+        return self.clients_dict
 
 
 if __name__ == '__main__':
