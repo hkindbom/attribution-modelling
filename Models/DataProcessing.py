@@ -4,6 +4,72 @@ import numpy as np
 from sklearn.neighbors import KernelDensity
 from datetime import timedelta
 
+from googleapiclient.discovery import build
+#import googleapiclient
+from oauth2client.service_account import ServiceAccountCredentials
+
+class ApiDataGA:
+    def __init__(self):
+        self.SCOPES = ['https://www.googleapis.com/auth/analytics.readonly']
+        self.KEY_FILE_LOCATION = '../API/Master-Thesis-GA-api-b6dc4fc6d4dd.json'
+        self.VIEW_ID = '229972923'
+
+    def initialize_analyticsreporting(self):
+        """Initializes an Analytics Reporting API V4 service object.
+        Returns: An authorized Analytics Reporting API V4 service object.
+        """
+        credentials = ServiceAccountCredentials.from_json_keyfile_name(self.KEY_FILE_LOCATION, self.SCOPES)
+
+        # Build the service object.
+        analytics = build('analyticsreporting', 'v4', credentials=credentials)
+        return analytics
+
+    def get_report(self, analytics):
+        """Queries the Analytics Reporting API V4.
+        Args:
+          analytics: An authorized Analytics Reporting API V4 service object.
+        Returns:
+          The Analytics Reporting API V4 response.
+        """
+        return analytics.reports().batchGet(
+            body={
+                'reportRequests': [
+                    {
+                        'viewId': self.VIEW_ID,
+                        'dateRanges': [{'startDate': '7daysAgo', 'endDate': 'today'}],
+                        'metrics': [{'expression': 'ga:sessions'}],
+                        'dimensions': [{'name': 'ga:country'}]
+                    }]
+            }
+        ).execute()
+
+    def print_response(self,response):
+        """Parses and prints the Analytics Reporting API V4 response.
+        Args:
+          response: An Analytics Reporting API V4 response.
+        """
+        for report in response.get('reports', []):
+            columnHeader = report.get('columnHeader', {})
+            dimensionHeaders = columnHeader.get('dimensions', [])
+            metricHeaders = columnHeader.get('metricHeader', {}).get('metricHeaderEntries', [])
+
+            for row in report.get('data', {}).get('rows', []):
+                dimensions = row.get('dimensions', [])
+                dateRangeValues = row.get('metrics', [])
+
+                for header, dimension in zip(dimensionHeaders, dimensions):
+                    print(header + ': ', dimension)
+
+                for i, values in enumerate(dateRangeValues):
+                    print('Date range:', str(i))
+                    for metricHeader, value in zip(metricHeaders, values.get('values')):
+                        print(metricHeader.get('name') + ':', value)
+
+    def main(self):
+        analytics = self.initialize_analyticsreporting()
+        response = self.get_report(analytics)
+        self.print_response(response)
+
 class DataProcessing:
     def __init__(self, file_path_GA_main = None, file_path_GA_secondary = None, file_path_mixpanel = None,
                  file_path_GA_aggregated = None, save_to_path = None):
@@ -333,5 +399,6 @@ if __name__ == '__main__':
     file_path_mp = '../Data/Mixpanel_data_2021-02-05.csv'
     start_time = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
 
+    api = ApiDataGA()
     descriptives = Descriptives(start_time, file_path_GA_main, file_path_GA_secondary, file_path_mp)
     descriptives = descriptives.show_interesting_results_combined()
