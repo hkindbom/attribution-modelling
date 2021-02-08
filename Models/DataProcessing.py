@@ -1,9 +1,8 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from sklearn.neighbors import KernelDensity
 from datetime import timedelta
-#from sklearn.neighbors import KernelDensity
-
 
 class DataProcessing:
     def __init__(self, file_path_GA_main = None, file_path_GA_secondary = None, file_path_mixpanel = None,
@@ -149,7 +148,11 @@ class DataProcessing:
         mixpanel_user.insert(0, 'client_id', client[0])
         self.converted_clients_df = self.converted_clients_df.append(mixpanel_user, ignore_index=True)
 
-
+    def estimate_client_LTV(self, w_premium = 1, w_nr_co_insured = - 5):
+        self.converted_clients_df['LTV'] = 0
+        for index, client in self.converted_clients_df.iterrows():
+            self.converted_clients_df.loc[index, 'LTV'] = client['premium'] * w_premium \
+                                                          + client['nr_co_insured'] * w_nr_co_insured
     def save_to_csv(self):
         self.GA_df.to_csv(self.save_to_path, sep=',')
 
@@ -168,8 +171,15 @@ class DataProcessing:
     def get_client_mixpanel_info(self, client):
         return self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client]
 
-class Descriptives:
+    def process_all(self, start_time):
+        self.process_individual_data()
+        self.group_by_client_id()
+        self.remove_post_conversion()
+        self.process_mixpanel_data(start_time)
+        self.create_converted_clients_df()
+        self.estimate_client_LTV()
 
+class Descriptives:
     def __init__(self, start_time, file_path_GA_main = None, file_path_GA_secondary = None, file_path_mp = None):
         self.start_time = start_time
         self.data_processing = DataProcessing(file_path_GA_main, file_path_GA_secondary, file_path_mp)
@@ -179,12 +189,7 @@ class Descriptives:
         self.read_data()
 
     def read_data(self):
-        self.data_processing.process_individual_data()
-        self.data_processing.group_by_client_id()
-        self.data_processing.remove_post_conversion()
-        self.data_processing.process_mixpanel_data(self.start_time)
-        self.data_processing.create_converted_clients_df()
-
+        self.data_processing.process_all(start_time)
         self.GA_df = self.data_processing.get_GA_df()
         self.MP_df = self.data_processing.get_MP_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
@@ -230,7 +235,6 @@ class Descriptives:
         df = pd.DataFrame({"Conversions last": occur_per_channel_conv_last,
                            "Conversions not last": occur_per_channel_conv_not_last,
                            "Non-conversion any time": occur_per_channel_non_conv})
-        print(df)
         ax = df.plot.bar(title="Source/medium occurences in paths")
         ax.set_xlabel("Source / Medium")
         if normalize:
@@ -260,25 +264,49 @@ class Descriptives:
         plt.ylabel("premium")
         plt.show()
 
-    def plot_user_conversions_not_last_against_source(self, column, nr_channels = 5):
+    def plot_user_conversions_not_last_against_source_hist(self, column, nr_channels = 5):
         conversion_paths_not_last_df = self.GA_df.loc[(self.GA_df['converted_eventually'] == 1) &
                                                    (self.GA_df['conversion'] == 0)]
         channels = conversion_paths_not_last_df['source_medium'].value_counts()[:nr_channels]
-        #channels.append(.... studentkortet t.ex.)
-        #plot_data_per_channel = {}
+        #channels = channels.append(pd.Series({'studentkortet / partnership': 0}))
         plot_data_per_channel = []
         for channel, _ in channels.iteritems():
             client_indexes = conversion_paths_not_last_df.loc[conversion_paths_not_last_df['source_medium'] == channel].index
             client_ids = [client_id[0] for client_id in client_indexes]
             user_data = self.converted_clients_df[self.converted_clients_df['client_id'].isin(client_ids)][column]
-            #plot_data_per_channel[channel] = user_data
             plot_data_per_channel.append(user_data)
+
         labels = list(channels.index)
-        x, bins, p = plt.hist(plot_data_per_channel, density=False, label=labels)
+        plt.hist(plot_data_per_channel, bins=5, density=False, label=labels)
         plt.legend()
         plt.title(column.capitalize() + ' per non-last conversion channel')
         plt.xlabel(column.capitalize())
         plt.ylabel('Counts')
+        plt.show()
+
+    def plot_user_conversions_not_last_against_source_curve(self, column, nr_channels = 3, bandwidth = 10, transparency = 0.4):
+        conversion_paths_not_last_df = self.GA_df.loc[(self.GA_df['converted_eventually'] == 1) &
+                                                      (self.GA_df['conversion'] == 0)]
+        channels = conversion_paths_not_last_df['source_medium'].value_counts()[:nr_channels]
+        channel_idx = 0
+        #channels = channels[::-1]
+        for channel, _ in channels.iteritems():
+            client_indexes = conversion_paths_not_last_df.loc[
+                conversion_paths_not_last_df['source_medium'] == channel].index
+            client_ids = [client_id[0] for client_id in client_indexes]
+            user_data = self.converted_clients_df[self.converted_clients_df['client_id'].isin(client_ids)][column]
+            x_plot = np.linspace(min(user_data)-3*bandwidth, max(user_data)+3*bandwidth, 1000)[:, np.newaxis]
+            plt.fill(x_plot[:, 0], np.exp(
+                KernelDensity(kernel = 'gaussian', bandwidth = bandwidth).fit(
+                    np.array(user_data).reshape(-1, 1)).score_samples(x_plot)),
+                     alpha = transparency, label = channel, fc = plt.get_cmap('tab10')(channel_idx))
+            channel_idx += 1
+
+        plt.title('')
+        plt.legend()
+        plt.title(column.capitalize() + ' per non-last conversion channel')
+        plt.xlabel(column.capitalize())
+        plt.ylabel('Proportion')
         plt.show()
 
     def show_interesting_results_MP(self):
@@ -292,8 +320,9 @@ class Descriptives:
         self.plot_path_duration_GA()
 
     def show_interesting_results_combined(self):
-        self.plot_user_conversions_not_last_against_source('premium')
-        pass
+        #self.plot_user_conversions_not_last_against_source('age')
+        self.plot_user_conversions_not_last_against_source_curve('premium', 3, 10)
+
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
@@ -302,9 +331,7 @@ if __name__ == '__main__':
     file_path_GA_main = '../Data/Analytics_sample_1.csv'
     file_path_GA_secondary = '../Data/Analytics_sample_2.csv'
     file_path_mp = '../Data/Mixpanel_data_2021-02-05.csv'
+    start_time = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
 
-    #data_processing.save_to_csv()
-    #df = data_processing.get_mixpanel_df()
-
-    descriptives = Descriptives(pd.Timestamp(year = 2021, month = 2, day = 1, tz='UTC'), file_path_GA_main, file_path_GA_secondary, file_path_mp)
-    descriptives.show_interesting_results_combined()
+    descriptives = Descriptives(start_time, file_path_GA_main, file_path_GA_secondary, file_path_mp)
+    descriptives = descriptives.show_interesting_results_combined()
