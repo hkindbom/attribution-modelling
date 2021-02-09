@@ -7,14 +7,15 @@ from datetime import timedelta
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 
-
 class ApiDataGA:
-    def __init__(self):
+    def __init__(self, start_date, end_date):
         self.SCOPES = ['https://www.googleapis.com/auth/analytics.readonly']
-        self.KEY_FILE_LOCATION = '../API/Master-Thesis-GA-api-b6dc4fc6d4dd.json'
+        self.KEY_FILE_LOCATION = '../API/ga-api.json'
         self.VIEW_ID = open('../API/view_id.txt', 'r').readline()
         self.analytics = None
         self.GA_api_df = None
+        self.start_date = start_date
+        self.end_date = end_date
 
     def initialize_analyticsreporting(self):
         # Initializes an Analytics Reporting API V4 service object.
@@ -22,8 +23,7 @@ class ApiDataGA:
         analytics = build('analyticsreporting', 'v4', credentials=credentials)
         self.analytics = analytics
 
-    def create_report_df(
-            self):  ## Queries the Analytics Reporting API V4. Returns the Analytics Reporting API V4 response.
+    def create_report_df(self):  ## Queries the Analytics Reporting API V4. Returns the Analytics Reporting API V4 response.
         METRICS = ['ga:sessions', 'ga:goal1Completions', 'ga:goal1Value']
         ## dimension6 = cllientId, dimension7 = sessionId, dimension8 = hit timestamp
         DIMS = ['ga:dimension6', 'ga:dimension7', 'ga:dimension8', 'ga:campaign',
@@ -33,7 +33,7 @@ class ApiDataGA:
                 'reportRequests': [
                     {
                         'viewId': self.VIEW_ID,
-                        'dateRanges': [{'startDate': '2021-02-01', 'endDate': 'today'}],
+                        'dateRanges': [{'startDate': str(self.start_date.date()), 'endDate': str(self.end_date.date())}],
                         'metrics': [{'expression': exp} for exp in METRICS],
                         'dimensions': [{'name': name} for name in DIMS],
                         'pageSize': 100000,  ## max nr of query results allowed by api
@@ -65,21 +65,20 @@ class ApiDataGA:
         self.initialize_analyticsreporting()
         self.create_report_df()
 
-
 class DataProcessing:
-    def __init__(self, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None):
+    def __init__(self, start_date, end_date, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None):
+        self.start_date = start_date
+        self.end_date = end_date
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
         self.GA_aggregated_df = None
-        #self.file_path_GA_main = file_path_GA_main
-        #self.file_path_GA_secondary = file_path_GA_secondary
         self.file_path_mixpanel = file_path_mixpanel
         self.file_path_GA_aggregated = file_path_GA_aggregated
         self.save_to_path = save_to_path
 
     def process_individual_data(self):
-        GA_api = ApiDataGA()
+        GA_api = ApiDataGA(self.start_date, self.end_date)
         GA_api.initialize_api()
         GA_api_df = GA_api.get_GA_df()
         GA_api_df = GA_api_df.rename(columns={'dimension6': 'client_id',
@@ -97,24 +96,6 @@ class DataProcessing:
         GA_api_df['conversion'] = GA_api_df['conversion'].astype(int)
         GA_api_df['conversion_value'] = GA_api_df['conversion_value'].astype(float)
         GA_api_df['sessions'] = GA_api_df['sessions'].astype(int)
-
-        #df1 = pd.read_csv(self.file_path_GA_main, header=5, dtype={'cllientId': str})  ##Remember to change header=5
-        #df2 = pd.read_csv(self.file_path_GA_secondary, header=5, dtype={'cllientId': str})
-        #cols_to_use = df2.columns.difference(df1.columns)
-        #df = pd.merge(df1, df2[cols_to_use], left_index=True, right_index=True, how='outer')
-
-        #df = df.rename(columns={'cllientId': 'client_id',
-        #                        'sessionId': 'session_id',
-        #                        'Campaign': 'campaign',
-        #                        'Sessions': 'sessions',
-        #                        'hit timestamp': 'timestamp',
-        #                        'Source / Medium': 'source_medium',
-        #                        'Signed Customer (Goal 1 Completions)': 'conversion',
-        #                        'Signed Customer (Goal 1 Value)': 'conversion_value',
-        #                        'Device Category': 'device_category'})
-        ## Be aware! Check time zones Daylight Savings Time (GA vs. MP)
-        #df['timestamp'] = pd.to_datetime(df['timestamp'], utc=True)
-        #df['conversion_value'] = df['conversion_value'].str.replace('SEK', '').astype(float)
 
         self.GA_df = GA_api_df
 
@@ -153,8 +134,7 @@ class DataProcessing:
             str.replace(',','.', regex=True).str.replace('\s+','', regex=True).astype(float)
         self.GA_aggregated_df = df
 
-    def process_mixpanel_data(self, start_time = pd.Timestamp(year = 2021, month = 2, day = 1, tz = 'UTC'),
-                              convert_to_float = True, market = 'SE'):
+    def process_mixpanel_data(self, convert_to_float = True, market = 'SE'):
         df = pd.read_csv(self.file_path_mixpanel)
 
         df = df[df['$properties.$created_at'] != 'undefined'] # Filter out non-singups
@@ -177,8 +157,8 @@ class DataProcessing:
 
         df['termination_date'] = pd.to_datetime(df['termination_date'], errors='coerce').dt.tz_localize('Europe/Oslo', ambiguous = False)
 
-        df = df.loc[df['signup_time'] >= start_time]  ## Filter by signup time
-
+        df = df.loc[(df['signup_time'] >= self.start_date) &
+                    (df['signup_time'] <= self.end_date)]  ## Filter by signup time
         df = df.loc[df['market'] == market]  ## Filter by regional market
 
         if convert_to_float:
@@ -197,17 +177,16 @@ class DataProcessing:
         for client, conversion_session in conversion_sessions_df.iterrows():
             self.match_client(client, conversion_session, minute_margin, premium_margin)
         nr_conversions = len(self.GA_df.loc[self.GA_df['conversion'] == 1])
-        print('Matched ', len(self.converted_clients_df), ' users of ', nr_conversions)# +
-              #'(' + str(len(self.converted_clients_df)/nr_conversions) + '%)')
-
+        print('Matched ' + str(len(self.converted_clients_df)) + ' users of ' + str(nr_conversions) +
+              ' (' + str(round(len(self.converted_clients_df)/nr_conversions*100,2)) + ' %)')
 
     def match_client(self, client, conversion_session, minute_margin, premium_margin):
         conversion_time = pd.to_datetime(conversion_session['timestamp'].strftime('%Y-%m-%d %H:%M:%S'), utc=True)
-        starttime = conversion_time - timedelta(minutes = minute_margin)
-        endtime = conversion_time + timedelta(minutes = minute_margin)
+        start_time = conversion_time - timedelta(minutes = minute_margin)
+        end_time = conversion_time + timedelta(minutes = minute_margin)
 
-        mixpanel_user = self.MP_df.loc[(self.MP_df['signup_time'] >= starttime) &
-                                       (self.MP_df['signup_time'] <= endtime)]
+        mixpanel_user = self.MP_df.loc[(self.MP_df['signup_time'] >= start_time) &
+                                       (self.MP_df['signup_time'] <= end_time)]
 
         if len(mixpanel_user) == 0:
             return
@@ -252,31 +231,46 @@ class DataProcessing:
     def get_client_mixpanel_info(self, client):
         return self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client]
 
-    def process_all(self, start_time):
+    def process_all(self):
         self.process_individual_data()
         self.group_by_client_id()
         self.remove_post_conversion()
-        self.process_mixpanel_data(start_time)
+        self.process_mixpanel_data()
         self.create_converted_clients_df()
         self.estimate_client_LTV()
 
 class Descriptives:
-    def __init__(self, start_time, file_path_mp = None):
-        self.start_time = start_time
-        self.data_processing = DataProcessing(file_path_mp)
+    def __init__(self, start_date, end_date, file_path_mp = None):
+        self.start_date = start_date
+        self.end_date = end_date
+        self.data_processing = DataProcessing(self.start_date, self.end_date, file_path_mp)
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
         self.read_data()
 
     def read_data(self):
-        self.data_processing.process_all(start_time)
+        self.data_processing.process_all()
         self.GA_df = self.data_processing.get_GA_df()
         self.MP_df = self.data_processing.get_MP_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
 
+    def get_conversion_paths(self):
+        return self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
+
+    def get_non_conversion_paths(self):
+        return self.GA_df.loc[self.GA_df['converted_eventually'] == 0]
+
+    def get_non_conversion_paths_last(self):
+        conversion_paths = self.get_conversion_paths()
+        return conversion_paths.loc[conversion_paths['conversion'] == 1]
+
+    def get_conversion_paths_not_last(self):
+        conversion_paths = self.get_conversion_paths()
+        return conversion_paths.loc[conversion_paths['conversion'] == 0]
+
     def plot_path_length_GA(self):
-        conversion_paths = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
+        conversion_paths = self.get_conversion_paths()
         path_lengths = []
         for client, path in conversion_paths.groupby(level=0):
             path_lengths.append(len(path))
@@ -288,7 +282,7 @@ class Descriptives:
         plt.show()
 
     def plot_path_duration_GA(self, nr_bars = 10):
-        conversion_paths = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
+        conversion_paths = self.get_conversion_paths()
         path_duration = []
         for client, path in conversion_paths.groupby(level=0):
             path_duration.append((path['timestamp'][-1] - path['timestamp'][0]).total_seconds()/(3600*24))
@@ -299,10 +293,9 @@ class Descriptives:
         plt.show()
 
     def plot_channel_conversion_frequency_GA(self, normalize = True):
-        non_conversion_paths = self.GA_df.loc[self.GA_df['converted_eventually'] == 0]
-        conversion_paths = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
-        conversion_paths_not_last = conversion_paths.loc[conversion_paths['conversion'] == 0]
-        conversion_paths_last = conversion_paths.loc[conversion_paths['conversion'] == 1]
+        non_conversion_paths = self.get_non_conversion_paths()
+        conversion_paths_not_last = self.get_conversion_paths_not_last()
+        conversion_paths_last = self.get_non_conversion_paths_last()
 
         occur_per_channel_non_conv = non_conversion_paths['source_medium'].value_counts()
         occur_per_channel_conv_last = conversion_paths_last['source_medium'].value_counts()
@@ -345,29 +338,26 @@ class Descriptives:
         plt.ylabel("premium")
         plt.show()
 
-    def plot_user_conversions_not_last_against_source_hist(self, column, nr_channels = 5):
-        conversion_paths_not_last_df = self.GA_df.loc[(self.GA_df['converted_eventually'] == 1) &
-                                                   (self.GA_df['conversion'] == 0)]
+    def plot_user_conversions_not_last_against_source_hist(self, user_feature, nr_channels = 5):
+        conversion_paths_not_last_df = self.get_conversion_paths_not_last()
         channels = conversion_paths_not_last_df['source_medium'].value_counts()[:nr_channels]
-        #channels = channels.append(pd.Series({'studentkortet / partnership': 0}))
-        plot_data_per_channel = []
+        user_data_per_channel = []
         for channel, _ in channels.iteritems():
             client_indexes = conversion_paths_not_last_df.loc[conversion_paths_not_last_df['source_medium'] == channel].index
             client_ids = [client_id[0] for client_id in client_indexes]
-            user_data = self.converted_clients_df[self.converted_clients_df['client_id'].isin(client_ids)][column]
-            plot_data_per_channel.append(user_data)
+            user_data = self.converted_clients_df[self.converted_clients_df['client_id'].isin(client_ids)][user_feature]
+            user_data_per_channel.append(user_data)
 
         labels = list(channels.index)
-        plt.hist(plot_data_per_channel, bins=5, density=False, label=labels)
+        plt.hist(user_data_per_channel, bins=5, density=False, label=labels)
         plt.legend()
-        plt.title(column.capitalize() + ' per non-last conversion channel')
-        plt.xlabel(column.capitalize())
+        plt.title(user_feature.capitalize() + ' per non-last conversion channel')
+        plt.xlabel(user_feature.capitalize())
         plt.ylabel('Counts')
         plt.show()
 
     def plot_user_conversions_not_last_against_source_curve(self, column, nr_channels = 3, bandwidth = 10, transparency = 0.4):
-        conversion_paths_not_last_df = self.GA_df.loc[(self.GA_df['converted_eventually'] == 1) &
-                                                      (self.GA_df['conversion'] == 0)]
+        conversion_paths_not_last_df = self.get_conversion_paths_not_last()
         channels = conversion_paths_not_last_df['source_medium'].value_counts()[:nr_channels]
         channel_idx = 0
         #channels = channels[::-1]
@@ -401,7 +391,6 @@ class Descriptives:
         self.plot_path_duration_GA()
 
     def show_interesting_results_combined(self):
-        #self.plot_user_conversions_not_last_against_source('age')
         self.plot_user_conversions_not_last_against_source_curve('premium', 3, 10)
 
 
@@ -409,12 +398,9 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    #file_path_GA_main = '../Data/Analytics_sample_1.csv'
-    #file_path_GA_secondary = '../Data/Analytics_sample_2.csv'
     file_path_mp = '../Data/Mixpanel_data_2021-02-09.csv'
-    start_time = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
+    start_date = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=8, tz='UTC')
 
-    #data = DataProcessing(file_path_mp)
-    #data.process_all(start_time)
-    descriptives = Descriptives(start_time, file_path_mp)
-    descriptives = descriptives.show_interesting_results_combined()
+    descriptives = Descriptives(start_date, end_date, file_path_mp)
+    descriptives.show_interesting_results_combined()
