@@ -1,6 +1,7 @@
 import pandas as pd
 from DataProcessing import DataProcessing
 import numpy as np
+import random
 
 class ModelDataLoader:
     def __init__(self, start_time, file_path_GA_main, file_path_GA_secondary, file_path_mp):
@@ -62,8 +63,21 @@ class ModelDataLoader:
             return True
         return False
 
-    def get_clients_dict(self):
-        return self.clients_dict
+    def get_clients_dict_split(self, train_prop):
+        client_ids = list(self.clients_dict.keys())
+        random.shuffle(client_ids)
+        nr_clients = len(client_ids)
+        nr_train = round(nr_clients * train_prop)
+        client_ids_train = client_ids[:nr_train]
+        client_ids_test = client_ids[nr_train:]
+
+        clients_dict_train = self.get_clients_sub_dict(client_ids_train)
+        clients_dict_test = self.get_clients_sub_dict(client_ids_test)
+
+        return clients_dict_train, clients_dict_test
+
+    def get_clients_sub_dict(self, sub_client_ids):
+        return {client_id: self.clients_dict[client_id] for client_id in sub_client_ids}
 
     def get_idx_to_ch_map(self):
         return self.idx_to_ch

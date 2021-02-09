@@ -6,24 +6,32 @@ import matplotlib.pyplot as plt
 # Code inspired by SP.py in https://github.com/rk2900/deep-conv-attr
 
 class SP:
-    def __init__(self, start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp):
+    def __init__(self, start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp,
+                 train_prop=0.8):
+
         self.data_loader = ModelDataLoader(start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp)
-        self.clients_data = self.data_loader.get_clients_dict()
+        self.clients_data_train = {}
+        self.clients_data_test = {}
         self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
         self.channel_value = {}
         self.channel_time = {}
         self.prob = {}
+        self.train_prop = train_prop
+
+    def load_train_test_data(self):
+        self.clients_data_train, self.clients_data_test = self.data_loader.get_clients_dict_split(self.train_prop)
 
     def train(self):
-        all_client_ids = list(self.clients_data.keys())
+        self.load_train_test_data()
+        client_ids_train = list(self.clients_data_train.keys())
 
-        for client_id in all_client_ids:
+        for client_id in client_ids_train:
             self.add_client_to_model(client_id)
         self.calc_prob()
 
     def add_client_to_model(self, client_id):
-        client_label = self.clients_data[client_id]['label']
-        for channel_idx in self.clients_data[client_id]['session_channels']:
+        client_label = self.clients_data_train[client_id]['label']
+        for channel_idx in self.clients_data_train[client_id]['session_channels']:
             if channel_idx in self.channel_value:
                 self.channel_value[channel_idx] += client_label
                 self.channel_time[channel_idx] += 1.
@@ -35,20 +43,21 @@ class SP:
         for channel_idx in self.channel_value:
             self.prob[channel_idx] = self.channel_value[channel_idx] / self.channel_time[channel_idx]
 
-    def get_prediction(self, client_id):
+    def get_prediction(self, client_id, clients_data):
         pred = 1
-        for channel_idx in self.clients_data[client_id]['session_channels']:
-            pred *= (1 - self.prob[channel_idx])
+        for channel_idx in clients_data[client_id]['session_channels']:
+            mult_factor = (1 - self.prob[channel_idx]) if channel_idx in self.prob else 1
+            pred *= mult_factor
         return round(1 - pred)
 
     def validate(self):
         labels = []
         preds = []
-        all_client_ids = list(self.clients_data.keys())
+        client_ids_test = list(self.clients_data_test.keys())
 
-        for client_id in all_client_ids:
-            preds.append(self.get_prediction(client_id))
-            labels.append(self.clients_data[client_id]['label'])
+        for client_id in client_ids_test:
+            preds.append(self.get_prediction(client_id, self.clients_data_test))
+            labels.append(self.clients_data_test[client_id]['label'])
 
         self.show_performance(labels, preds)
 
@@ -86,7 +95,9 @@ if __name__ == '__main__':
     file_path_mp = '../Data/Mixpanel_data_2021-02-04.csv'
     start_time_mp = pd.Timestamp(year = 2021, month = 2, day = 1, tz='UTC')
 
-    SP_model = SP(start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp)
+    train_proportion = 0.8
+
+    SP_model = SP(start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp, train_proportion)
     SP_model.train()
     SP_model.validate()
     SP_model.plot_attributions()
