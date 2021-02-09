@@ -1,11 +1,15 @@
 from ModelDataLoader import ModelDataLoader
 import pandas as pd
 from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
+import matplotlib.pyplot as plt
+
+# Code inspired by SP.py in https://github.com/rk2900/deep-conv-attr
 
 class SP:
     def __init__(self, start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp):
         self.data_loader = ModelDataLoader(start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp)
         self.clients_data = self.data_loader.get_clients_dict()
+        self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
         self.channel_value = {}
         self.channel_time = {}
         self.prob = {}
@@ -49,7 +53,6 @@ class SP:
         self.show_performance(labels, preds)
 
     def show_performance(self, labels, preds):
-
         auc = roc_auc_score(labels, preds)
         logloss = log_loss(labels, preds)
         tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
@@ -60,8 +63,19 @@ class SP:
         print('precision: ', tp / (tp + fp), ' ability of the classifier not to label as positive a sample that is negative')
         print('recall: ', tp / (tp + fn), ' ability of the classifier to find all the positive samples')
 
-    def get_attributions(self):
-        pass
+    def plot_attributions(self):
+        channel_names = []
+        channel_attribution = []
+
+        for channel_idx in self.prob:
+            channel_names.append(self.idx_to_ch[channel_idx])
+            channel_attribution.append(self.prob[channel_idx])
+
+        df = pd.DataFrame({'Channel': channel_names, 'Attribution': channel_attribution})
+        ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
+        plt.tight_layout()
+        plt.title('Attributions - SP model')
+        plt.show()
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
@@ -75,3 +89,4 @@ if __name__ == '__main__':
     SP_model = SP(start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp)
     SP_model.train()
     SP_model.validate()
+    SP_model.plot_attributions()

@@ -65,6 +65,9 @@ class ModelDataLoader:
     def get_clients_dict(self):
         return self.clients_dict
 
+    def get_idx_to_ch_map(self):
+        return self.idx_to_ch
+
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
