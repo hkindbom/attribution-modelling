@@ -14,12 +14,7 @@ class ProcessToNumeric:
         self.read_data()
 
     def read_data(self):
-        self.data_processing.process_individual_data()
-        self.data_processing.group_by_client_id()
-        self.data_processing.remove_post_conversion()
-        self.data_processing.process_mixpanel_data(self.start_time)
-        self.data_processing.create_converted_clients_df()
-
+        self.data_processing.process_all(self.start_time)
         self.GA_df = self.data_processing.get_GA_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
 
