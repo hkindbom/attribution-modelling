@@ -1,0 +1,73 @@
+from ModelDataLoader import ModelDataLoader
+import numpy as np
+import pandas as pd
+from sklearn.metrics import roc_auc_score, log_loss
+
+class SP:
+    def __init__(self, start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp):
+        self.data_loader = ModelDataLoader(start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp)
+        self.clients_data = self.data_loader.get_clients_dict()
+        self.channel_value = {}
+        self.channel_time = {}
+        self.prob = {}
+
+    def train(self):
+        all_client_ids = list(self.clients_data.keys())
+
+        for client_id in all_client_ids:
+            self.add_client_to_model(client_id)
+        self.calc_prob()
+
+    def add_client_to_model(self, client_id):
+        client_label = self.clients_data[client_id]['label']
+        for channel_idx in self.clients_data[client_id]['session_channels']:
+            if channel_idx in self.channel_value:
+                self.channel_value[channel_idx] += client_label
+                self.channel_time[channel_idx] += 1.
+            else:
+                self.channel_value[channel_idx] = client_label
+                self.channel_time[channel_idx] = 1.
+
+    def calc_prob(self):
+        for channel_idx in self.channel_value:
+            self.prob[channel_idx] = self.channel_value[channel_idx] / self.channel_time[channel_idx]
+
+    def validate(self):
+        labels = []
+        preds = []
+        all_client_ids = list(self.clients_data.keys())
+
+        for client_id in all_client_ids:
+            preds.append(self.get_prediction(client_id))
+            labels.append(self.clients_data[client_id]['label'])
+
+        auc = roc_auc_score(labels, preds)
+        logloss = log_loss(labels, preds)
+
+        print('AUC: ', auc)
+        print('Log-loss: ', logloss)
+
+    def get_prediction(self, client_id):
+        pred = 1
+        for channel_idx in self.clients_data[client_id]['session_channels']:
+            pred *= (1 - self.prob[channel_idx])
+        return pred
+
+    def get_attributions(self):
+        pass
+
+
+
+
+if __name__ == '__main__':
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.max_rows', None)
+
+    file_path_GA_main = '../Data/Analytics_sample_1.csv'
+    file_path_GA_secondary = '../Data/Analytics_sample_2.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-02-04.csv'
+    start_time_mp = pd.Timestamp(year = 2021, month = 2, day = 1, tz='UTC')
+
+    SP_model = SP(start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp)
+    SP_model.train()
+    SP_model.validate()

@@ -2,7 +2,7 @@ import pandas as pd
 from DataProcessing import DataProcessing
 import numpy as np
 
-class ProcessToNumeric:
+class ModelDataLoader:
     def __init__(self, start_time, file_path_GA_main, file_path_GA_secondary, file_path_mp):
         self.data_processing = DataProcessing(file_path_GA_main, file_path_GA_secondary, file_path_mp)
         self.start_time = start_time
@@ -12,6 +12,7 @@ class ProcessToNumeric:
         self.ch_to_idx = {}
         self.idx_to_ch = {}
         self.read_data()
+        self.create_clients_dict()
 
     def read_data(self):
         self.data_processing.process_all(self.start_time)
@@ -74,5 +75,5 @@ if __name__ == '__main__':
     file_path_mp = '../Data/Mixpanel_data_2021-02-04.csv'
     start_time_mp = pd.Timestamp(year = 2021, month = 2, day = 1, tz='UTC')
 
-    processor = ProcessToNumeric(start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp)
-    processor.create_clients_dict()
+    processor = ModelDataLoader(start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp)
+
