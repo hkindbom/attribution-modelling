@@ -2,6 +2,7 @@
 /venv
 /Data
 /Plots
+/API
 __pycache__/
 .idea
 *.csv
