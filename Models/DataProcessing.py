@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import numpy as np
 from sklearn.neighbors import KernelDensity
 from datetime import timedelta
-
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 
@@ -17,15 +16,14 @@ class ApiDataGA:
         self.start_date = start_date
         self.end_date = end_date
 
-    def initialize_analyticsreporting(self):
-        # Initializes an Analytics Reporting API V4 service object.
+    def initialize_analyticsreporting(self): # Initializes an Analytics Reporting API V4 service object.
         credentials = ServiceAccountCredentials.from_json_keyfile_name(self.KEY_FILE_LOCATION, self.SCOPES)
         analytics = build('analyticsreporting', 'v4', credentials=credentials)
         self.analytics = analytics
 
-    def create_report_df(self):  ## Queries the Analytics Reporting API V4. Returns the Analytics Reporting API V4 response.
+    def create_report_df(self):  # Queries the Analytics Reporting API V4. Returns the Analytics Reporting API V4 response.
         METRICS = ['ga:sessions', 'ga:goal1Completions', 'ga:goal1Value']
-        ## dimension6 = cllientId, dimension7 = sessionId, dimension8 = hit timestamp
+        # dimension6 = cllientId, dimension7 = sessionId, dimension8 = hit timestamp
         DIMS = ['ga:dimension6', 'ga:dimension7', 'ga:dimension8', 'ga:campaign',
                 'ga:sourcemedium', 'ga:source', 'ga:devicecategory']
         data = self.analytics.reports().batchGet(
@@ -37,6 +35,7 @@ class ApiDataGA:
                         'metrics': [{'expression': exp} for exp in METRICS],
                         'dimensions': [{'name': name} for name in DIMS],
                         'pageSize': 100000,  ## max nr of query results allowed by api
+                        'includeEmptyRows': False,
                     }]
             }
         ).execute()
@@ -261,7 +260,7 @@ class Descriptives:
     def get_non_conversion_paths(self):
         return self.GA_df.loc[self.GA_df['converted_eventually'] == 0]
 
-    def get_non_conversion_paths_last(self):
+    def get_conversion_paths_last(self):
         conversion_paths = self.get_conversion_paths()
         return conversion_paths.loc[conversion_paths['conversion'] == 1]
 
@@ -295,7 +294,7 @@ class Descriptives:
     def plot_channel_conversion_frequency_GA(self, normalize = True):
         non_conversion_paths = self.get_non_conversion_paths()
         conversion_paths_not_last = self.get_conversion_paths_not_last()
-        conversion_paths_last = self.get_non_conversion_paths_last()
+        conversion_paths_last = self.get_conversion_paths_last()
 
         occur_per_channel_non_conv = non_conversion_paths['source_medium'].value_counts()
         occur_per_channel_conv_last = conversion_paths_last['source_medium'].value_counts()
