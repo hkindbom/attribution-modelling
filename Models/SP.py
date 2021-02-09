@@ -1,7 +1,6 @@
 from ModelDataLoader import ModelDataLoader
-import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score, log_loss
+from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
 
 class SP:
     def __init__(self, start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp):
@@ -32,6 +31,12 @@ class SP:
         for channel_idx in self.channel_value:
             self.prob[channel_idx] = self.channel_value[channel_idx] / self.channel_time[channel_idx]
 
+    def get_prediction(self, client_id):
+        pred = 1
+        for channel_idx in self.clients_data[client_id]['session_channels']:
+            pred *= (1 - self.prob[channel_idx])
+        return round(1 - pred)
+
     def validate(self):
         labels = []
         preds = []
@@ -41,23 +46,22 @@ class SP:
             preds.append(self.get_prediction(client_id))
             labels.append(self.clients_data[client_id]['label'])
 
+        self.show_performance(labels, preds)
+
+    def show_performance(self, labels, preds):
+
         auc = roc_auc_score(labels, preds)
         logloss = log_loss(labels, preds)
+        tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
 
         print('AUC: ', auc)
         print('Log-loss: ', logloss)
-
-    def get_prediction(self, client_id):
-        pred = 1
-        for channel_idx in self.clients_data[client_id]['session_channels']:
-            pred *= (1 - self.prob[channel_idx])
-        return pred
+        print('tn: ', tn, 'fp: ', fp, 'fn: ', fn, 'tp: ', tp)
+        print('precision: ', tp / (tp + fp), ' ability of the classifier not to label as positive a sample that is negative')
+        print('recall: ', tp / (tp + fn), ' ability of the classifier to find all the positive samples')
 
     def get_attributions(self):
         pass
-
-
-
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
