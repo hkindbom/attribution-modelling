@@ -4,9 +4,8 @@ import numpy as np
 import random
 
 class ModelDataLoader:
-    def __init__(self, start_time, file_path_GA_main, file_path_GA_secondary, file_path_mp):
-        self.data_processing = DataProcessing(file_path_GA_main, file_path_GA_secondary, file_path_mp)
-        self.start_time = start_time
+    def __init__(self, start_time, end_date, file_path_mp):
+        self.data_processing = DataProcessing(start_time, end_date, file_path_mp)
         self.GA_df = None
         self.converted_clients_df = None
         self.clients_dict = {}
@@ -16,14 +15,13 @@ class ModelDataLoader:
         self.create_clients_dict()
 
     def read_data(self):
-        self.data_processing.process_all(self.start_time)
+        self.data_processing.process_all()
         self.GA_df = self.data_processing.get_GA_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
 
     def create_clients_dict(self, use_LTV=False):
         GA_temp = self.GA_df
         self.create_idx_ch_map(GA_temp['source_medium'].unique().tolist())
-
         for client_id, client_df in GA_temp.groupby(level=0):
             self.process_client_df(client_id, client_df, use_LTV)
 
@@ -87,10 +85,9 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_GA_main = '../Data/Analytics_sample_1.csv'
-    file_path_GA_secondary = '../Data/Analytics_sample_2.csv'
-    file_path_mp = '../Data/Mixpanel_data_2021-02-04.csv'
-    start_time_mp = pd.Timestamp(year = 2021, month = 2, day = 1, tz='UTC')
+    file_path_mp = '../Data/Mixpanel_data_2021-02-09.csv'
+    start_date = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=8, tz='UTC')
 
-    processor = ModelDataLoader(start_time_mp, file_path_GA_main, file_path_GA_secondary, file_path_mp)
+    processor = ModelDataLoader(start_date, end_date, file_path_mp)
 
