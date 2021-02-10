@@ -275,14 +275,12 @@ class DataProcessing:
                                                           + client['nr_co_insured'] * w_nr_co_insured
 
     def get_cpc(self):
-        pass
-    #    self.GA_df['cost'] = 0
-    #    zero_cost_channels = ['direct', 'organic']
-    #    for _, session in self.GA_df.iterrows():
-    #        print(session['source'])
-
-    #    searchfor = ['og', 'at']
-    #    >> > s[s.str.contains('|'.join(searchfor))]
+        self.GA_df['cost'] = 0
+        ###funnel_df = bq.get_funnel_df()
+        free_source_mediums = ['direct', 'organic']
+        paid_click_sessions_df = self.GA_df.loc[self.GA_df['source_medium'].str.contains('|'.join(free_source_mediums))]
+        #for _, session in paid_click_sessions_df.iterrows():
+            
 
     def save_to_csv(self):
         self.GA_df.to_csv(self.save_to_path, sep=',')
