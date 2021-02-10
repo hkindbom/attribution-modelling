@@ -6,23 +6,23 @@ from datetime import timedelta
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
 from google.oauth2 import service_account
-from google.cloud import bigquery
-from google.cloud import bigquery_storage
+from google.cloud import bigquery, bigquery_storage
 
 class ApiDataBigQuery:
-    def __init__(self, start_date, end_date, table_year_month='2021_02'):
-        self.table_year_month = table_year_month
+    def __init__(self, start_date, end_date):
         self.start_date = start_date
         self.end_date = end_date
         self.funnel_df = None
         self.fetch_BQ()
 
+    # Be Aware! Can only handle max one month at a time
     def fetch_BQ(self):
         credentials = service_account.Credentials.from_service_account_file('../API/BQ_api.json')
-
-        bqclient = bigquery.Client(credentials=credentials, project=credentials.project_id, )
+        bqclient = bigquery.Client(credentials=credentials, project=credentials.project_id)
         bqstorageclient = bigquery_storage.BigQueryReadClient(credentials=credentials)
-        query_string = f"SELECT * FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_{self.table_year_month} " \
+
+        query_string = f"SELECT * FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_" \
+                       f"{self.start_date.year}_{str(self.start_date.month).zfill(2)} " \
                        f"WHERE Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) " \
                        f"AND Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day})"
 
