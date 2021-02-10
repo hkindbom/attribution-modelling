@@ -24,13 +24,20 @@ class ApiDataBigQuery:
         query_string = f"SELECT * FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_" \
                        f"{self.start_date.year}_{str(self.start_date.month).zfill(2)} " \
                        f"WHERE Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) " \
-                       f"AND Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day})"
+                       f"AND Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day})" \
+                       f"AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"
 
         self.funnel_df = (
             bqclient.query(query_string)
                 .result()
                 .to_dataframe(bqstorage_client=bqstorageclient)
         )
+        self.funnel_df = self.funnel_df.drop(columns=['Campaign_name__TikTok'])
+        self.add_cost_per_click()
+
+    def add_cost_per_click(self):
+        self.funnel_df['cpc'] = self.funnel_df['Cost'] / self.funnel_df['Clicks']
+        self.funnel_df.loc[~np.isfinite(self.funnel_df['cpc']), 'cpc'] = np.nan # Handle div by 0
 
     def get_funnel_df(self):
         return self.funnel_df
@@ -267,6 +274,16 @@ class DataProcessing:
             self.converted_clients_df.loc[index, 'LTV'] = client['premium'] * w_premium \
                                                           + client['nr_co_insured'] * w_nr_co_insured
 
+    def get_cpc(self):
+        pass
+    #    self.GA_df['cost'] = 0
+    #    zero_cost_channels = ['direct', 'organic']
+    #    for _, session in self.GA_df.iterrows():
+    #        print(session['source'])
+
+    #    searchfor = ['og', 'at']
+    #    >> > s[s.str.contains('|'.join(searchfor))]
+
     def save_to_csv(self):
         self.GA_df.to_csv(self.save_to_path, sep=',')
 
@@ -292,6 +309,7 @@ class DataProcessing:
         self.process_mixpanel_data()
         self.create_converted_clients_df()
         self.estimate_client_LTV()
+        self.get_cpc()
 
 
 class Descriptives:
@@ -454,6 +472,7 @@ class Descriptives:
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
+    pd.options.display.width = 0
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-10.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=1, hour=0, minute=0, tz='UTC')
