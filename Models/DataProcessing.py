@@ -301,7 +301,7 @@ class Descriptives:
         for client, path in conversion_paths.groupby(level=0):
             path_lengths.append(len(path))
         temp_df = pd.DataFrame({'freq': path_lengths})
-        temp_df.groupby('freq', as_index=False).size().plot(x='freq', y='size', kind='bar')
+        temp_df.groupby('freq', as_index=False).size().plot(x='freq', y='size', kind='bar', legend=False)
         plt.title('Conversion path lengths')
         plt.xlabel('Length')
         plt.ylabel('Frequency')
@@ -346,14 +346,14 @@ class Descriptives:
 
     def plot_age_dist_MP(self):
         fig, ax = plt.subplots()
-        self.MP_df['age'].value_counts().plot(ax=ax, kind='bar')
+        self.MP_df['age'].value_counts(sort=False).plot(ax=ax, kind='bar')
         plt.title('Age distribution - Hedvig users')
         plt.show()
 
     def plot_premium_dist_MP(self):
         fig, ax = plt.subplots()
         self.MP_df = self.MP_df.sort_values(by=['premium'], ascending=False)
-        self.MP_df['premium'].value_counts().plot(ax=ax, kind='bar')
+        self.MP_df['premium'].value_counts(sort=False).plot(ax=ax, kind='bar')
         plt.title('Premium distribution - Hedvig users')
         plt.show()
 
@@ -419,7 +419,7 @@ class Descriptives:
         self.plot_path_duration_GA()
 
     def show_interesting_results_combined(self):
-        self.plot_user_conversions_not_last_against_source_curve('premium', 3, 10)
+        self.plot_user_conversions_not_last_against_source_curve('nr_co_insured', nr_channels=3, bandwidth=0.5)
 
 
 if __name__ == '__main__':
