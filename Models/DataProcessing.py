@@ -5,6 +5,35 @@ from sklearn.neighbors import KernelDensity
 from datetime import timedelta
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2 import service_account
+from google.cloud import bigquery
+from google.cloud import bigquery_storage
+
+class ApiDataBigQuery:
+    def __init__(self, start_date, end_date, table_year_month='2021_02'):
+        self.table_year_month = table_year_month
+        self.start_date = start_date
+        self.end_date = end_date
+        self.funnel_df = None
+        self.fetch_BQ()
+
+    def fetch_BQ(self):
+        credentials = service_account.Credentials.from_service_account_file('../API/BQ_api.json')
+
+        bqclient = bigquery.Client(credentials=credentials, project=credentials.project_id, )
+        bqstorageclient = bigquery_storage.BigQueryReadClient(credentials=credentials)
+        query_string = f"SELECT * FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_{self.table_year_month} " \
+                       f"WHERE Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) " \
+                       f"AND Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day})"
+
+        self.funnel_df = (
+            bqclient.query(query_string)
+                .result()
+                .to_dataframe(bqstorage_client=bqstorageclient)
+        )
+
+    def get_funnel_df(self):
+        return self.funnel_df
 
 class ApiDataGA:
     def __init__(self, start_date, end_date):
@@ -400,6 +429,9 @@ if __name__ == '__main__':
     file_path_mp = '../Data/Mixpanel_data_2021-02-09.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=8, tz='UTC')
+
+    bq = ApiDataBigQuery(start_date=start_date, end_date=end_date)
+    print(bq.get_funnel_df())
 
     descriptives = Descriptives(start_date, end_date, file_path_mp)
     descriptives.show_interesting_results_combined()
