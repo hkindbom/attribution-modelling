@@ -5,6 +5,43 @@ from sklearn.neighbors import KernelDensity
 from datetime import timedelta
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2 import service_account
+from google.cloud import bigquery, bigquery_storage
+
+class ApiDataBigQuery:
+    def __init__(self, start_date, end_date):
+        self.start_date = start_date
+        self.end_date = end_date
+        self.funnel_df = None
+        self.fetch_BQ()
+
+    # Be Aware! Can only handle max one month at a time
+    def fetch_BQ(self):
+        credentials = service_account.Credentials.from_service_account_file('../API/BQ_api.json')
+        bqclient = bigquery.Client(credentials=credentials, project=credentials.project_id)
+        bqstorageclient = bigquery_storage.BigQueryReadClient(credentials=credentials)
+
+        query_string = f"SELECT * FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_" \
+                       f"{self.start_date.year}_{str(self.start_date.month).zfill(2)} " \
+                       f"WHERE Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) " \
+                       f"AND Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day})" \
+                       f"AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"
+
+        self.funnel_df = (
+            bqclient.query(query_string)
+                .result()
+                .to_dataframe(bqstorage_client=bqstorageclient)
+        )
+        self.funnel_df = self.funnel_df.drop(columns=['Campaign_name__TikTok'])  ## Add to SQL query instead
+        self.add_cost_per_click()
+        print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel')
+
+    def add_cost_per_click(self):
+        self.funnel_df['cpc'] = self.funnel_df['Cost'] / self.funnel_df['Clicks']
+        self.funnel_df.loc[~np.isfinite(self.funnel_df['cpc']), 'cpc'] = np.nan  # Handle div by 0
+
+    def get_funnel_df(self):
+        return self.funnel_df
 
 
 class ApiDataGA:
@@ -58,6 +95,7 @@ class ApiDataGA:
         GA_api_df.columns = [col.split(':')[-1] for col in GA_api_df.columns]
 
         self.GA_api_df = GA_api_df
+        print('Read ', len(self.GA_api_df), ' datapoints from Google Analytics')
 
     def get_GA_df(self):
         return self.GA_api_df
@@ -75,9 +113,11 @@ class DataProcessing:
         self.MP_df = None
         self.converted_clients_df = None
         self.GA_aggregated_df = None
+        self.funnel_df = None
         self.file_path_mixpanel = file_path_mixpanel
         self.file_path_GA_aggregated = file_path_GA_aggregated
         self.save_to_path = save_to_path
+
 
     def process_individual_data(self):
         GA_api = ApiDataGA(self.start_date, self.end_date)
@@ -123,7 +163,7 @@ class DataProcessing:
                 post_conversion = cust_journey.loc[cust_journey['timestamp'] > conversion_time]
                 if not post_conversion.empty:
                     sessions_to_delete = sessions_to_delete.append(post_conversion)
-        self.GA_df = pd.concat([df, sessions_to_delete, sessions_to_delete]).drop_duplicates(keep=False)
+        self.GA_df = pd.concat([df, sessions_to_delete]).drop_duplicates(keep=False)
 
     def process_aggregated_data(self):
         df = pd.read_csv(self.file_path_GA_aggregated, header=5)
@@ -173,6 +213,7 @@ class DataProcessing:
             df['nr_co_insured'] = pd.to_numeric(df['nr_co_insured'], errors='coerce').fillna(0)
 
         self.MP_df = df
+        print('Read ', len(self.MP_df), ' datapoints from Mixpanel')
 
     def create_converted_clients_df(self, minute_margin=1.5, premium_margin=10):
         self.converted_clients_df = pd.DataFrame(columns=['client_id'] + list(self.MP_df.columns))
@@ -238,6 +279,19 @@ class DataProcessing:
             self.converted_clients_df.loc[index, 'LTV'] = client['premium'] * w_premium \
                                                           + client['nr_co_insured'] * w_nr_co_insured
 
+    def assign_cost(self, free_mediums):
+        self.GA_df['cost'] = 0
+        paid_click_sessions_df = self.GA_df.loc[~self.GA_df['source_medium'].str.contains('|'.join(free_mediums))]
+        for cust_id, session in paid_click_sessions_df.iterrows():
+            marketing_spend_series = self.funnel_df.loc[(self.funnel_df['Date'] == session['timestamp'].date()) &
+                                                   (self.funnel_df['Traffic_source'].str.lower() == session['source'])]
+            if not marketing_spend_series.empty:
+                self.GA_df.loc[cust_id, 'cost'] = marketing_spend_series.iloc[0]['cpc']
+
+    def process_bq_funnel(self):
+        bq_processor = ApiDataBigQuery(self.start_date, self.end_date)
+        self.funnel_df = bq_processor.get_funnel_df()
+
     def save_to_csv(self):
         self.GA_df.to_csv(self.save_to_path, sep=',')
 
@@ -250,6 +304,9 @@ class DataProcessing:
     def get_GA_aggr_df(self):
         return self.GA_aggregated_df
 
+    def get_funnel_df(self):
+        return self.funnel_df
+
     def get_converted_clients_df(self):
         return self.converted_clients_df
 
@@ -257,12 +314,14 @@ class DataProcessing:
         return self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client]
 
     def process_all(self):
+        self.process_bq_funnel()
         self.process_individual_data()
         self.group_by_client_id()
         self.remove_post_conversion()
         self.process_mixpanel_data()
         self.create_converted_clients_df()
         self.estimate_client_LTV()
+        self.assign_cost(['organic'])
 
 
 class Descriptives:
@@ -273,6 +332,7 @@ class Descriptives:
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
+        self.funnel_df = None
         self.read_data()
 
     def read_data(self):
@@ -280,6 +340,7 @@ class Descriptives:
         self.GA_df = self.data_processing.get_GA_df()
         self.MP_df = self.data_processing.get_MP_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
+        self.funnel_df = self.data_processing.get_funnel_df()
 
     def get_conversion_paths(self):
         return self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
@@ -388,7 +449,6 @@ class Descriptives:
         conversion_paths_not_last_df = self.get_conversion_paths_not_last()
         channels = conversion_paths_not_last_df['source_medium'].value_counts()[:nr_channels]
         channel_idx = 0
-        # channels = channels[::-1]
         for channel, _ in channels.iteritems():
             client_indexes = conversion_paths_not_last_df.loc[
                 conversion_paths_not_last_df['source_medium'] == channel].index
@@ -408,6 +468,16 @@ class Descriptives:
         plt.ylabel('Proportion')
         plt.show()
 
+    def plot_cpc_per_channel_over_time(self):
+        funnel_temp_df = self.funnel_df
+        funnel_temp_df.set_index(['Date', 'Traffic_source'])
+        fig, ax = plt.subplots(figsize=(15, 7))
+        funnel_temp_df.groupby(['Date', 'Traffic_source']).sum()['cpc'].unstack().plot(ax=ax, rot=90)
+        plt.title('Mean cpc per day per channel')
+        plt.ylabel('CPC [SEK]')
+        plt.grid()
+        plt.show()
+
     def show_interesting_results_MP(self):
         self.plot_premium_age_MP()
         self.plot_age_dist_MP()
@@ -421,14 +491,18 @@ class Descriptives:
     def show_interesting_results_combined(self):
         self.plot_user_conversions_not_last_against_source_curve('nr_co_insured', nr_channels=3, bandwidth=0.5)
 
+    def show_interesting_results_funnel(self):
+        self.plot_cpc_per_channel_over_time()
+
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
+    pd.options.display.width = 0
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-10.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=1, hour=0, minute=0, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=9, hour=23, minute=59, tz='UTC')
 
     descriptives = Descriptives(start_date, end_date, file_path_mp)
-    descriptives.show_interesting_results_combined()
+    descriptives.show_interesting_results_funnel()
