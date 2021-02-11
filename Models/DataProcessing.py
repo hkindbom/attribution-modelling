@@ -9,13 +9,11 @@ from oauth2client.service_account import ServiceAccountCredentials
 from google.oauth2 import service_account
 from google.cloud import bigquery, bigquery_storage
 
-import sys #####################
-
 class ApiDataBigQuery:
     def __init__(self, start_date, end_date):
         self.start_date = start_date
         self.end_date = end_date
-        self.funnel_df = pd.DataFrame() # Create empty df to append to
+        self.funnel_df = pd.DataFrame()
         self.fetch_BQ()
 
     def fetch_BQ(self):
@@ -26,40 +24,31 @@ class ApiDataBigQuery:
         start_date_temp = self.start_date.replace(day=1)
         month_intervals = pd.date_range(start_date_temp.date(), self.end_date.date(), freq='MS', normalize=True).tolist()
         for month_period in month_intervals:
-            query_file_name = f"{month_period.year}_{str(month_period.month).zfill(2)} "
-
             if month_period == month_intervals[0]:
-                query_start_date = \
-                    f"WHERE Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day}) "
+                query_start_date = f"{self.start_date.year}, {self.start_date.month}, {self.start_date.day}"
 
             else:
-                query_start_date = f"WHERE Date >= DATE ({month_period.year}, {month_period.month}, {1}) "
+                query_start_date = f"{month_period.year}, {month_period.month}, {1}"
 
             if month_period == month_intervals[-1]:
-                query_end_date = f"AND Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) "
+                query_end_date = f"{self.end_date.year}, {self.end_date.month}, {self.end_date.day}"
 
             else:
-                query_end_date = f"AND Date <= DATE ({month_period.year}, {month_period.month}, " \
-                                 f"{calendar.monthrange(month_period.year, month_period.month)[1]}) "
+                query_end_date = f"{month_period.year}, {month_period.month}, " \
+                                 f"{calendar.monthrange(month_period.year, month_period.month)[1]}"
 
-            query_string = f"SELECT Date, Traffic_source, Data_Source_type, Cost, Clicks, Impressions " \
-                           f"FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_" \
-                           + query_file_name \
-                           + query_start_date \
-                           + query_end_date + \
-                           f"AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"
-                           #f"{self.start_date.year}_{str(self.start_date.month).zfill(2)} " \
-                           #f"WHERE Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day})" \
-                           #f"AND Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) " \
+            query_string = f"SELECT Date, Traffic_source, Data_Source_type, Cost, Clicks, Impressions \
+                           FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_{month_period.year}_{str(month_period.month).zfill(2)} \
+                           WHERE Date >= DATE ({query_start_date}) \
+                           AND Date <= DATE ({query_end_date}) \
+                           AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"
 
             self.funnel_df = self.funnel_df.append(bqclient.query(query_string).result()
                                                    .to_dataframe(bqstorage_client=bqstorageclient))
 
         self.add_cost_per_click()
         print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel (in ',
-              len(month_intervals), ' querys)' if len(self.funnel_df) > 1 else ' query)')
-        #print(self.funnel_df.sort_values(by=['Date']))
-        #sys.exit()  ###########
+              len(month_intervals), ' querys)')
 
     def add_cost_per_click(self):
         self.funnel_df['cpc'] = self.funnel_df['Cost'] / self.funnel_df['Clicks']
@@ -173,7 +162,8 @@ class DataProcessing:
                               'm.facebook.com': 'facebook',
                               'l.facebook.com': 'facebook',
                               'instagram.com': 'facebook'}
-        GA_api_df = GA_api_df.replace({'source': source_rename_dict}) # Rename source for correct cost allocation
+        GA_api_df = GA_api_df.replace({'source': source_rename_dict})  # Rename source for correct cost allocation
+        print('Number of unique sources in GA: ', len(GA_api_df['source'].unique()))
         self.GA_df = GA_api_df
 
     def group_by_client_id(self):
@@ -237,8 +227,8 @@ class DataProcessing:
                                                                                                         ambiguous=False)
 
         df = df.loc[(df['signup_time'] >= self.start_date) &
-                    (df['signup_time'] <= self.end_date)]  # Filter by signup time
-        df = df.loc[df['market'] == market]  # Filter by regional market
+                    (df['signup_time'] <= self.end_date)]
+        df = df.loc[df['market'] == market]
 
         if convert_to_float:
             df['premium'] = pd.to_numeric(df['premium'], errors='coerce')
@@ -322,7 +312,6 @@ class DataProcessing:
                                                    (self.funnel_df['Traffic_source'].str.lower() == session['source'])]
             if not marketing_spend_series.empty:
                 self.GA_df.loc[cust_id, 'cost'] = marketing_spend_series.iloc[0]['cpc']
-        print(len(self.GA_df['cost'].loc[self.GA_df['cost'] > 0]))
 
     def process_bq_funnel(self):
         bq_processor = ApiDataBigQuery(self.start_date, self.end_date)
@@ -537,7 +526,7 @@ if __name__ == '__main__':
     pd.options.display.width = 0
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
-    start_date = pd.Timestamp(year=2021, month=1, day=31, hour=0, minute=0, tz='UTC')
+    start_date = pd.Timestamp(year=2021, month=2, day=1, hour=0, minute=0, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
 
     descriptives = Descriptives(start_date, end_date, file_path_mp)
