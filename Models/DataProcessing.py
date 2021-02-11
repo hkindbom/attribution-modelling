@@ -21,7 +21,8 @@ class ApiDataBigQuery:
         bqclient = bigquery.Client(credentials=credentials, project=credentials.project_id)
         bqstorageclient = bigquery_storage.BigQueryReadClient(credentials=credentials)
 
-        query_string = f"SELECT * FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_" \
+        query_string = f"SELECT Date, Traffic_source, Data_Source_type, Cost, Clicks, Impressions " \
+                       f"FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_" \
                        f"{self.start_date.year}_{str(self.start_date.month).zfill(2)} " \
                        f"WHERE Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) " \
                        f"AND Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day})" \
@@ -32,7 +33,6 @@ class ApiDataBigQuery:
                 .result()
                 .to_dataframe(bqstorage_client=bqstorageclient)
         )
-        self.funnel_df = self.funnel_df.drop(columns=['Campaign_name__TikTok'])  ## Add to SQL query instead
         self.add_cost_per_click()
         print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel')
 
@@ -500,9 +500,9 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', None)
     pd.options.display.width = 0
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-10.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=1, hour=0, minute=0, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=9, hour=23, minute=59, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
 
     descriptives = Descriptives(start_date, end_date, file_path_mp)
     descriptives.show_interesting_results_funnel()
