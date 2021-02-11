@@ -1,6 +1,7 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import calendar
 from sklearn.neighbors import KernelDensity
 from datetime import timedelta
 from googleapiclient.discovery import build
@@ -8,11 +9,13 @@ from oauth2client.service_account import ServiceAccountCredentials
 from google.oauth2 import service_account
 from google.cloud import bigquery, bigquery_storage
 
+import sys
+
 class ApiDataBigQuery:
     def __init__(self, start_date, end_date):
         self.start_date = start_date
         self.end_date = end_date
-        self.funnel_df = None
+        self.funnel_df = pd.DataFrame()
         self.fetch_BQ()
 
     # Be Aware! Can only handle max one month at a time
@@ -21,20 +24,43 @@ class ApiDataBigQuery:
         bqclient = bigquery.Client(credentials=credentials, project=credentials.project_id)
         bqstorageclient = bigquery_storage.BigQueryReadClient(credentials=credentials)
 
-        query_string = f"SELECT Date, Traffic_source, Data_Source_type, Cost, Clicks, Impressions " \
-                       f"FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_" \
-                       f"{self.start_date.year}_{str(self.start_date.month).zfill(2)} " \
-                       f"WHERE Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) " \
-                       f"AND Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day})" \
-                       f"AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"
+        time_intervals = pd.date_range(self.start_date.date(), self.end_date.date(), freq='MS').tolist()
+        for month_period in time_intervals:
+            query_file_name = f"{month_period.year}_{str(month_period.month).zfill(2)} "
 
-        self.funnel_df = (
-            bqclient.query(query_string)
-                .result()
-                .to_dataframe(bqstorage_client=bqstorageclient)
-        )
+            if month_period == time_intervals[0]:
+                query_start_date = \
+                    f"WHERE Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day}) "
+
+            else:
+                query_start_date = \
+                    f"WHERE Date >= DATE ({month_period.year}, {month_period.month}, {1}) "
+
+            if month_period == time_intervals[-1]:
+                query_end_date = \
+                    f"AND Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) "
+
+            else:
+                query_end_date = \
+                    f"AND Date <= DATE ({month_period.year}, {month_period.month}, " \
+                    f"{calendar.monthrange(month_period.year, month_period.month)[1]}) "
+
+            query_string = f"SELECT Date, Traffic_source, Data_Source_type, Cost, Clicks, Impressions " \
+                           f"FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_" \
+                           + query_file_name \
+                           + query_start_date \
+                           + query_end_date + \
+                           f"AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"
+                           #f"WHERE Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day})" \
+                           #f"AND Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) " \
+
+
+            self.funnel_df = self.funnel_df.append(bqclient.query(query_string).result()
+                                                   .to_dataframe(bqstorage_client=bqstorageclient))
+
         self.add_cost_per_click()
         print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel')
+        #sys.exit()  ###########
 
     def add_cost_per_click(self):
         self.funnel_df['cpc'] = self.funnel_df['Cost'] / self.funnel_df['Clicks']
