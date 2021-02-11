@@ -56,7 +56,8 @@ class ApiDataBigQuery:
                                                    .to_dataframe(bqstorage_client=bqstorageclient))
 
         self.add_cost_per_click()
-        print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel')
+        print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel (in ',
+              len(month_intervals), ' querys)' if len(self.funnel_df) > 1 else ' query)')
         #print(self.funnel_df.sort_values(by=['Date']))
         #sys.exit()  ###########
 
@@ -163,6 +164,16 @@ class DataProcessing:
         GA_api_df['conversion_value'] = GA_api_df['conversion_value'].astype(float)
         GA_api_df['sessions'] = GA_api_df['sessions'].astype(int)
 
+        source_rename_dict = {'keep.google.com': 'google',
+                              'mail.google.com': 'google',
+                              'ads.google.com': 'google',
+                              'tagassistant.google.com': 'google',
+                              'youtube': 'google',
+                              'facebook.com': 'facebook',
+                              'm.facebook.com': 'facebook',
+                              'l.facebook.com': 'facebook',
+                              'instagram.com': 'facebook'}
+        GA_api_df = GA_api_df.replace({'source': source_rename_dict}) # Rename source for correct cost allocation
         self.GA_df = GA_api_df
 
     def group_by_client_id(self):
@@ -311,6 +322,7 @@ class DataProcessing:
                                                    (self.funnel_df['Traffic_source'].str.lower() == session['source'])]
             if not marketing_spend_series.empty:
                 self.GA_df.loc[cust_id, 'cost'] = marketing_spend_series.iloc[0]['cpc']
+        print(len(self.GA_df['cost'].loc[self.GA_df['cost'] > 0]))
 
     def process_bq_funnel(self):
         bq_processor = ApiDataBigQuery(self.start_date, self.end_date)
@@ -525,7 +537,7 @@ if __name__ == '__main__':
     pd.options.display.width = 0
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
-    start_date = pd.Timestamp(year=2020, month=12, day=20, hour=0, minute=0, tz='UTC')
+    start_date = pd.Timestamp(year=2021, month=1, day=31, hour=0, minute=0, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
 
     descriptives = Descriptives(start_date, end_date, file_path_mp)
