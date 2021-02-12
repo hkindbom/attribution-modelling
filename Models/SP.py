@@ -91,8 +91,8 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', None)
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
-    start_date = pd.Timestamp(year=2021, month=2, day=3, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=10, tz='UTC')
+    start_date = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
 
     train_proportion = 0.7
     nr_top_ch = 10

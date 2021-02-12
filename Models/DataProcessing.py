@@ -165,7 +165,7 @@ class DataProcessing:
                               'l.facebook.com': 'facebook',
                               'instagram.com': 'facebook'}
         GA_api_df = GA_api_df.replace({'source': source_rename_dict})  # Rename source for correct cost allocation
-        print('Number of unique sources in GA: ', len(GA_api_df['source'].unique()))
+        print('Number of unique sources in GA before filter: ', len(GA_api_df['source'].unique()))
         self.GA_df = GA_api_df
 
     def drop_uncommon_channels(self):
@@ -182,7 +182,7 @@ class DataProcessing:
 
         GA_major_downsampled = GA_temp.query('converted_eventually == ' + str(major_label)).sample(class_counts[1])
         GA_minority = GA_temp[GA_temp['converted_eventually'] == minor_label]
-        self.GA_df = GA_minority.append(GA_major_downsampled)
+        self.GA_df = GA_minority.append(GA_major_downsampled).sort_index()
 
     def group_by_client_id(self):
         df = self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
