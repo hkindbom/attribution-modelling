@@ -122,7 +122,7 @@ class ApiDataGA:
 
 class DataProcessing:
     def __init__(self, start_date, end_date, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None,
-                 nr_top_ch=1000, ratio_maj_min_class=1):
+                 nr_top_ch=1000, ratio_maj_min_class=None):
         self.start_date = start_date
         self.end_date = end_date
         self.nr_top_ch = nr_top_ch
@@ -177,6 +177,8 @@ class DataProcessing:
         self.GA_df = self.GA_df.groupby('source_medium').filter(lambda source: len(source) >= source_counts[self.nr_top_ch-1])
 
     def balance_classes_GA(self):
+        if self.ratio_maj_min_class is None:
+            return
         GA_temp = self.GA_df
         class_counts = GA_temp['converted_eventually'].value_counts()
         major_label = class_counts.index.tolist()[0]
