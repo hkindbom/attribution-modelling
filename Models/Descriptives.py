@@ -87,10 +87,10 @@ class Descriptives:
         plt.show()
 
     def plot_perc_occur_conv_spend(self):
-        get_conversion_paths = self.get_conversion_paths()
-        cost_per_source_medium = get_conversion_paths.groupby(['source_medium']).agg('sum')['cost']
+        conversion_paths = self.get_conversion_paths()
+        cost_per_source_medium = conversion_paths.groupby(['source_medium']).agg('sum')['cost']
         cost_per_source_medium_perc = 100 * (cost_per_source_medium / cost_per_source_medium.sum())
-        conv_per_source_medium_perc = 100 * get_conversion_paths['source_medium'].value_counts() / len(get_conversion_paths['source_medium'])
+        conv_per_source_medium_perc = 100 * conversion_paths['source_medium'].value_counts() / len(conversion_paths['source_medium'])
 
         conv_cost_df_perc = pd.concat([conv_per_source_medium_perc, cost_per_source_medium_perc], axis=1)
         conv_cost_df_perc.rename(columns={"source_medium": "Conversion path %", "cost": "Spend %"}, inplace=True)
