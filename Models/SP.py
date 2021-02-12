@@ -6,10 +6,10 @@ import matplotlib.pyplot as plt
 # Code inspired by SP.py in https://github.com/rk2900/deep-conv-attr
 
 class SP:
-    def __init__(self, start_date, end_date, file_path_mp,
+    def __init__(self, start_date, end_date, file_path_mp, nr_top_ch,
                  train_prop=0.8):
 
-        self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp)
+        self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch)
         self.clients_data_train = {}
         self.clients_data_test = {}
         self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
@@ -90,13 +90,14 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-09.csv'
-    start_date = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=8, tz='UTC')
+    file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
+    start_date = pd.Timestamp(year=2021, month=2, day=3, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=11, tz='UTC')
 
     train_proportion = 0.7
+    nr_top_ch = 10
 
-    SP_model = SP(start_date, end_date, file_path_mp, train_proportion)
+    SP_model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_proportion)
     SP_model.train()
     SP_model.validate()
     SP_model.plot_attributions()

@@ -4,8 +4,8 @@ import numpy as np
 import random
 
 class ModelDataLoader:
-    def __init__(self, start_time, end_date, file_path_mp):
-        self.data_processing = DataProcessing(start_time, end_date, file_path_mp)
+    def __init__(self, start_time, end_date, file_path_mp, nr_top_ch):
+        self.data_processing = DataProcessing(start_time, end_date, file_path_mp, nr_top_ch=nr_top_ch)
         self.GA_df = None
         self.converted_clients_df = None
         self.clients_dict = {}
@@ -85,9 +85,9 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-09.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=8, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=11, tz='UTC')
 
     processor = ModelDataLoader(start_date, end_date, file_path_mp)
 

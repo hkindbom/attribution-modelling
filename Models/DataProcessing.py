@@ -120,9 +120,10 @@ class ApiDataGA:
 
 
 class DataProcessing:
-    def __init__(self, start_date, end_date, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None):
+    def __init__(self, start_date, end_date, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None, nr_top_ch=1000):
         self.start_date = start_date
         self.end_date = end_date
+        self.nr_top_ch = nr_top_ch
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
@@ -165,6 +166,12 @@ class DataProcessing:
         GA_api_df = GA_api_df.replace({'source': source_rename_dict})  # Rename source for correct cost allocation
         print('Number of unique sources in GA: ', len(GA_api_df['source'].unique()))
         self.GA_df = GA_api_df
+
+    def drop_uncommon_channels(self):
+        source_counts = self.GA_df['source_medium'].value_counts()
+        if len(source_counts) <= self.nr_top_ch:
+            return
+        self.GA_df = self.GA_df.groupby('source_medium').filter(lambda source: len(source) >= source_counts[self.nr_top_ch-1])
 
     def group_by_client_id(self):
         df = self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
@@ -341,6 +348,7 @@ class DataProcessing:
     def process_all(self):
         self.process_bq_funnel()
         self.process_individual_data()
+        self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
         self.process_mixpanel_data()
