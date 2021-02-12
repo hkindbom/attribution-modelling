@@ -98,7 +98,9 @@ class Descriptives:
         conv_cost_df_perc.plot(y=["Conversion path %", "Spend %"], kind="bar")
         plt.tight_layout()
         plt.ylabel('%')
-        plt.title('Spend percentage vs percentage of occurring in conversion paths')
+        plt.title(f"Spend % vs occurrences % in conversion paths during "
+                  f"{self.start_date.year}-{self.start_date.month}-{self.start_date.day} to "
+                  f"{self.end_date.year}-{self.end_date.month}-{self.end_date.day}")
         plt.show()
 
     def plot_age_dist_MP(self):
