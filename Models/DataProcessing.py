@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import calendar
 from sklearn.neighbors import KernelDensity
+from sklearn.utils import resample
 from datetime import timedelta
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
@@ -109,7 +110,7 @@ class ApiDataGA:
         GA_api_df.columns = [col.split(':')[-1] for col in GA_api_df.columns]
 
         self.GA_api_df = GA_api_df
-        print('Read ', len(self.GA_api_df), ' datapoints from Google Analytics')
+        print('Read ', len(self.GA_api_df), ' datapoints from Google Analytics before processing')
 
     def get_GA_df(self):
         return self.GA_api_df
@@ -172,6 +173,16 @@ class DataProcessing:
         if len(source_counts) <= self.nr_top_ch:
             return
         self.GA_df = self.GA_df.groupby('source_medium').filter(lambda source: len(source) >= source_counts[self.nr_top_ch-1])
+
+    def balance_classes_GA(self):
+        GA_temp = self.GA_df
+        class_counts = GA_temp['converted_eventually'].value_counts()
+        major_label = class_counts.index.tolist()[0]
+        minor_label = class_counts.index.tolist()[1]
+
+        GA_major_downsampled = GA_temp.query('converted_eventually == ' + str(major_label)).sample(class_counts[1])
+        GA_minority = GA_temp[GA_temp['converted_eventually'] == minor_label]
+        self.GA_df = pd.concat([GA_minority, GA_major_downsampled])
 
     def group_by_client_id(self):
         df = self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
@@ -351,6 +362,8 @@ class DataProcessing:
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
+        self.balance_classes_GA()
+
         self.process_mixpanel_data()
         self.create_converted_clients_df()
         self.estimate_client_LTV()
