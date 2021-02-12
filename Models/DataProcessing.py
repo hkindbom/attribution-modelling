@@ -119,7 +119,7 @@ class ApiDataGA:
 
 class DataProcessing:
     def __init__(self, start_date, end_date, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None,
-                 nr_top_ch=1000, ratio_maj_min_class=None):
+                 nr_top_ch=10000, ratio_maj_min_class=None):
         self.start_date = start_date
         self.end_date = end_date
         self.nr_top_ch = nr_top_ch

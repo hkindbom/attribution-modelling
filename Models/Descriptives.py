@@ -6,10 +6,10 @@ from DataProcessing import DataProcessing
 
 
 class Descriptives:
-    def __init__(self, start_date, end_date, file_path_mp=None):
+    def __init__(self, start_date, end_date, file_path_mp=None, nr_top_ch=10000):
         self.start_date = start_date
         self.end_date = end_date
-        self.data_processing = DataProcessing(self.start_date, self.end_date, file_path_mp)
+        self.data_processing = DataProcessing(self.start_date, self.end_date, file_path_mp, nr_top_ch=nr_top_ch)
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
@@ -87,12 +87,12 @@ class Descriptives:
         plt.show()
 
     def plot_perc_occur_conv_spend(self):
-        conversion_paths = self.get_conversion_paths()
-        cost_per_source_medium = conversion_paths.groupby(['source_medium']).agg('sum')['cost']
+        cost_per_source_medium = self.GA_df.groupby(['source_medium']).agg('sum')['cost']
         cost_per_source_medium_perc = 100 * (cost_per_source_medium / cost_per_source_medium.sum())
+        conversion_paths = self.get_conversion_paths()
         conv_per_source_medium_perc = 100 * conversion_paths['source_medium'].value_counts() / len(conversion_paths['source_medium'])
 
-        conv_cost_df_perc = pd.concat([conv_per_source_medium_perc, cost_per_source_medium_perc], axis=1)
+        conv_cost_df_perc = pd.concat([conv_per_source_medium_perc, cost_per_source_medium_perc], axis=1).fillna(0)
         conv_cost_df_perc.rename(columns={"source_medium": "Conversion path %", "cost": "Spend %"}, inplace=True)
 
         conv_cost_df_perc.plot(y=["Conversion path %", "Spend %"], kind="bar")
@@ -202,6 +202,7 @@ if __name__ == '__main__':
     file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=1, hour=0, minute=0, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
+    nr_top_ch = 15
 
-    descriptives = Descriptives(start_date, end_date, file_path_mp)
+    descriptives = Descriptives(start_date, end_date, file_path_mp, nr_top_ch)
     descriptives.show_interesting_results_GA()
