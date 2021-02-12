@@ -7,9 +7,9 @@ import matplotlib.pyplot as plt
 
 class SP:
     def __init__(self, start_date, end_date, file_path_mp, nr_top_ch,
-                 train_prop=0.8):
+                 train_prop=0.8, ratio_maj_min_class=1):
 
-        self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch)
+        self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
         self.clients_data_train = {}
         self.clients_data_test = {}
         self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
@@ -66,6 +66,7 @@ class SP:
         logloss = log_loss(labels, preds)
         tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
 
+        print('Accuracy ', (tn+tp)/(tn+tp+fp+fn))
         print('AUC: ', auc)
         print('Log-loss: ', logloss)
         print('tn:', tn, ' fp:', fp, ' fn:', fn, ' tp:', tp)
@@ -96,8 +97,9 @@ if __name__ == '__main__':
 
     train_proportion = 0.7
     nr_top_ch = 10
+    ratio_maj_min_class = 2
 
-    SP_model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_proportion)
+    SP_model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class)
     SP_model.train()
     SP_model.validate()
     SP_model.plot_attributions()

@@ -121,10 +121,12 @@ class ApiDataGA:
 
 
 class DataProcessing:
-    def __init__(self, start_date, end_date, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None, nr_top_ch=1000):
+    def __init__(self, start_date, end_date, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None,
+                 nr_top_ch=1000, ratio_maj_min_class=1):
         self.start_date = start_date
         self.end_date = end_date
         self.nr_top_ch = nr_top_ch
+        self.ratio_maj_min_class = ratio_maj_min_class
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
@@ -180,7 +182,8 @@ class DataProcessing:
         major_label = class_counts.index.tolist()[0]
         minor_label = class_counts.index.tolist()[1]
 
-        GA_major_downsampled = GA_temp.query('converted_eventually == ' + str(major_label)).sample(class_counts[1])
+        GA_major_downsampled = GA_temp.query('converted_eventually == ' +
+                                             str(major_label)).sample(class_counts[1] * self.ratio_maj_min_class)
         GA_minority = GA_temp[GA_temp['converted_eventually'] == minor_label]
         self.GA_df = GA_minority.append(GA_major_downsampled).sort_index()
 

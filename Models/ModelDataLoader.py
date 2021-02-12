@@ -4,8 +4,10 @@ import numpy as np
 import random
 
 class ModelDataLoader:
-    def __init__(self, start_time, end_date, file_path_mp, nr_top_ch):
-        self.data_processing = DataProcessing(start_time, end_date, file_path_mp, nr_top_ch=nr_top_ch)
+    def __init__(self, start_time, end_date, file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1):
+        self.data_processing = DataProcessing(start_time, end_date, file_path_mp,
+                                              nr_top_ch=nr_top_ch,
+                                              ratio_maj_min_class=ratio_maj_min_class)
         self.GA_df = None
         self.converted_clients_df = None
         self.clients_dict = {}
@@ -28,6 +30,7 @@ class ModelDataLoader:
     def process_client_df(self, client_id, client_df, use_LTV):
         session_times_raw = list(client_df['timestamp'].values)
         sess_ch_names = list(client_df['source_medium'].values)
+        sess_ch_cost = list(client_df['cost'].values)
         sess_ch_idx = [self.ch_to_idx[sess_ch_name] for sess_ch_name in sess_ch_names]
         label = int(client_df['converted_eventually'][0])
 
@@ -41,6 +44,7 @@ class ModelDataLoader:
         self.clients_dict[client_id]['label'] = label
         self.clients_dict[client_id]['session_times'] = session_times
         self.clients_dict[client_id]['session_channels'] = sess_ch_idx
+        self.clients_dict[client_id]['cost'] = sess_ch_cost
 
     def normalize_timestamps(self, session_times_raw):
         start_time = min(session_times_raw)
@@ -88,6 +92,5 @@ if __name__ == '__main__':
     file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=11, tz='UTC')
-
     processor = ModelDataLoader(start_date, end_date, file_path_mp)
 
