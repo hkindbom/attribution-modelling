@@ -182,7 +182,7 @@ class DataProcessing:
 
         GA_major_downsampled = GA_temp.query('converted_eventually == ' + str(major_label)).sample(class_counts[1])
         GA_minority = GA_temp[GA_temp['converted_eventually'] == minor_label]
-        self.GA_df = pd.concat([GA_minority, GA_major_downsampled])
+        self.GA_df = GA_minority.append(GA_major_downsampled)
 
     def group_by_client_id(self):
         df = self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
