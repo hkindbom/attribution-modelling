@@ -90,12 +90,14 @@ class Descriptives:
         cost_per_source_medium = self.GA_df.groupby(['source_medium']).agg('sum')['cost']
         cost_per_source_medium_perc = 100 * (cost_per_source_medium / cost_per_source_medium.sum())
         conversion_paths = self.get_conversion_paths()
-        conv_per_source_medium_perc = 100 * conversion_paths['source_medium'].value_counts() / len(conversion_paths['source_medium'])
+
+        conv_paths_count = conversion_paths.reset_index().groupby('client_id')['source_medium'].value_counts().to_frame('path_count').reset_index()
+        conv_per_source_medium_perc = 100 * conv_paths_count['source_medium'].value_counts() / len(self.get_conversion_paths_last()['source_medium'])
 
         conv_cost_df_perc = pd.concat([conv_per_source_medium_perc, cost_per_source_medium_perc], axis=1).fillna(0)
-        conv_cost_df_perc.rename(columns={"source_medium": "Conversion path %", "cost": "Spend %"}, inplace=True)
+        conv_cost_df_perc.rename(columns={"source_medium": "% of Conversion Paths", "cost": "% of Tot Spend"}, inplace=True)
 
-        conv_cost_df_perc.plot(y=["Conversion path %", "Spend %"], kind="bar")
+        conv_cost_df_perc.plot(y=["% of Conversion Paths", "% of Tot Spend"], kind="bar")
         plt.tight_layout()
         plt.ylabel('%')
         plt.title(f"Spend % vs occurrences % in conversion paths during "
