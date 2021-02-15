@@ -91,6 +91,7 @@ class Descriptives:
         cost_per_source_medium_perc = 100 * (cost_per_source_medium / cost_per_source_medium.sum())
         conversion_paths = self.get_conversion_paths()
 
+        # Note! % conversion for each channel is between 0 and 100 and % spend is between 0 and 100 for all channels together (only based on cpc)
         conv_paths_count = conversion_paths.reset_index().groupby('client_id')['source_medium'].value_counts().to_frame('path_count').reset_index()
         conv_per_source_medium_perc = 100 * conv_paths_count['source_medium'].value_counts() / len(self.get_conversion_paths_last()['source_medium'])
 
