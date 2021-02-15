@@ -3,9 +3,6 @@ from DataProcessing import DataProcessing
 import numpy as np
 import random
 
-import sys  #########
-
-
 class ModelDataLoader:
     def __init__(self, start_time, end_date, file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1):
         self.data_processing = DataProcessing(start_time, end_date, file_path_mp,
@@ -122,7 +119,6 @@ class ModelDataLoader:
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
-    np.set_printoptions(threshold=sys.maxsize)
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')

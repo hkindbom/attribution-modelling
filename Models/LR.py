@@ -24,7 +24,7 @@ class LR:
         self.log_reg.fit(self.x_train, self.y_train)
 
     def get_coefs(self):
-        return self.log_reg.coef_
+        return self.log_reg.coef_[0]
 
     def get_predictions(self, x):
         return self.log_reg.predict(x)
@@ -46,13 +46,14 @@ class LR:
         coefs = self.get_coefs()
         ch_names = []
         attributions = []
-        for idx, coeff in enumerate(coefs[0]):
-            attributions.append(coeff)
+        for idx, coef in enumerate(coefs):
+            attributions.append(coef)
             ch_names.append(self.idx_to_ch[idx])
         df = pd.DataFrame({'Channel': ch_names, 'Attribution': attributions})
         ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
         plt.tight_layout()
         plt.title('Attributions - LR model')
+        plt.axhline([0])
         plt.show()
 
 if __name__ == '__main__':
