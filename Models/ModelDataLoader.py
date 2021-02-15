@@ -3,6 +3,9 @@ from DataProcessing import DataProcessing
 import numpy as np
 import random
 
+import sys  #########
+
+
 class ModelDataLoader:
     def __init__(self, start_time, end_date, file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1):
         self.data_processing = DataProcessing(start_time, end_date, file_path_mp,
@@ -65,6 +68,41 @@ class ModelDataLoader:
             return True
         return False
 
+    def get_feature_matrix_split(self, train_prop, use_LTV=False, use_time=False):
+        nr_channels = len(self.ch_to_idx)
+        nr_clients = len(self.clients_dict)
+        labels = np.empty(nr_clients)
+        feature_matrix = np.zeros((nr_clients, nr_channels))
+
+        for idx, client_id in enumerate(self.clients_dict.keys()):
+            label = self.clients_dict[client_id]['label']
+            if use_LTV:
+                pass
+            else:
+                labels[idx] = label
+
+            feature_matrix[idx, self.clients_dict[client_id]['session_channels']] = 1
+            path_length = len(self.clients_dict[client_id]['session_times'])
+
+            if use_time:
+                if path_length > 1:
+                    times = np.array(self.clients_dict[client_id]['session_times'])
+                    times_on_matrix_format = np.zeros(nr_channels)
+                    times_on_matrix_format[self.clients_dict[client_id]['session_channels']] = times
+                    feature_matrix[idx] = feature_matrix[idx] + times_on_matrix_format
+
+        random_indices = np.random.permutation(len(labels))
+        randomized_matrix = feature_matrix[random_indices]
+        randomized_labels = labels[random_indices]
+
+        nr_train = round(nr_clients * train_prop)
+        x_train = randomized_matrix[:nr_train]
+        x_test = randomized_matrix[nr_train:]
+        y_train = randomized_labels[:nr_train]
+        y_test = randomized_labels[nr_train:]
+
+        return x_train, y_train, x_test, y_test
+
     def get_clients_dict_split(self, train_prop):
         client_ids = list(self.clients_dict.keys())
         random.shuffle(client_ids)
@@ -88,9 +126,10 @@ class ModelDataLoader:
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
+    np.set_printoptions(threshold=sys.maxsize)
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=11, tz='UTC')
     processor = ModelDataLoader(start_date, end_date, file_path_mp)
-
+    print(processor.get_feature_matrix_split(0.8))
