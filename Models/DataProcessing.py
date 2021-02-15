@@ -177,14 +177,15 @@ class DataProcessing:
         if self.ratio_maj_min_class is None:
             return
         GA_temp = self.GA_df
-        class_counts = GA_temp['converted_eventually'].value_counts()
+        class_counts = GA_temp['conversion'].value_counts()
         major_label = class_counts.index.tolist()[0]
         minor_label = class_counts.index.tolist()[1]
 
         GA_major_downsampled = GA_temp.query('converted_eventually == ' +
-                                             str(major_label)).sample(class_counts[1] * self.ratio_maj_min_class)
+                                             str(major_label)).sample(round(class_counts[1] * self.ratio_maj_min_class))
         GA_minority = GA_temp[GA_temp['converted_eventually'] == minor_label]
         self.GA_df = GA_minority.append(GA_major_downsampled).sort_index()
+
 
     def group_by_client_id(self):
         df = self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)

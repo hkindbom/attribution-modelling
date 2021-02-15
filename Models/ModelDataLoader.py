@@ -65,6 +65,37 @@ class ModelDataLoader:
             return True
         return False
 
+    def get_feature_matrix_split(self, train_prop, use_time=False, use_LTV=False):
+        nr_channels = len(self.ch_to_idx)
+        nr_clients = len(self.clients_dict)
+        labels = np.empty(nr_clients)
+        feature_matrix = np.zeros((nr_clients, nr_channels))
+
+        for idx, client_id in enumerate(list(self.clients_dict.keys())):
+            label = self.clients_dict[client_id]['label']
+            if use_LTV:
+                pass
+            else:
+                labels[idx] = label
+
+            feature_matrix[idx, self.clients_dict[client_id]['session_channels']] = 1
+            if use_time:
+                times = np.array(self.clients_dict[client_id]['session_times'])
+                times_on_matrix_format = np.zeros(nr_channels)
+                times_on_matrix_format[self.clients_dict[client_id]['session_channels']] = times
+                feature_matrix[idx] += times_on_matrix_format
+
+        random_indices = np.random.permutation(len(labels))
+        randomized_matrix = feature_matrix[random_indices]
+        randomized_labels = labels[random_indices]
+
+        nr_train = round(nr_clients * train_prop)
+        x_train = randomized_matrix[:nr_train]
+        x_test = randomized_matrix[nr_train:]
+        y_train = randomized_labels[:nr_train]
+        y_test = randomized_labels[nr_train:]
+        return x_train, y_train, x_test, y_test
+
     def get_clients_dict_split(self, train_prop):
         client_ids = list(self.clients_dict.keys())
         random.shuffle(client_ids)
@@ -93,4 +124,4 @@ if __name__ == '__main__':
     start_date = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=11, tz='UTC')
     processor = ModelDataLoader(start_date, end_date, file_path_mp)
-
+    processor.get_feature_matrix_split(0.8)
