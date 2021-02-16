@@ -21,6 +21,7 @@ class LR:
             get_feature_matrix_split(self.train_prop, self.use_time)
 
     def train(self):
+        self.load_train_test_data()
         self.log_reg.fit(self.x_train, self.y_train)
 
     def get_coefs(self):
@@ -70,7 +71,6 @@ if __name__ == '__main__':
     use_time = True
 
     model = LR(start_date, end_date, file_path_mp, nr_top_ch, use_time, train_proportion, ratio_maj_min_class)
-    model.load_train_test_data()
     model.train()
     model.validate()
     model.plot_attributions()
