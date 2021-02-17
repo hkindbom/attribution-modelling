@@ -1,50 +1,44 @@
 import pandas as pd
 from SP import SP
 from LR import LR
-from DataProcessing import DataProcessing
 
 class Evaluation:
-    def __init__(self, start_date, end_date, file_path_mp, nr_top_ch, use_time, train_prop, ratio_maj_min_class,
-                 total_budget):
-        #self.lr_model = LR(start_date, end_date, file_path_mp, nr_top_ch, use_time, train_prop, ratio_maj_min_class)
-        #self.sp_model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class)
-        self.data_processing = DataProcessing(start_date, end_date, file_path_mp, nr_top_ch=nr_top_ch,
-                                              ratio_maj_min_class = ratio_maj_min_class)
-        self.data_processing.process_all()
+    def __init__(self, GA_df, total_budget, attributions, idx_to_ch_map, ch_to_idx_map):
+        self.GA_df = GA_df
         self.total_budget = total_budget
-        self.model = None
+        self.attributions = attributions
+        self.idx_to_ch_map = idx_to_ch_map
+        self.ch_to_idx_map = ch_to_idx_map
         self.channels_roi = {}
+        self.channels_budgets = {}
 
-    def train_lr_model(self):
-        self.lr_model.train()
+    def calculate_channels_roi(self):
+        conversion_paths = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
+        channels_spend = self.GA_df.groupby(['source_medium']).agg('sum')['cost']
+        channels_spend = channels_spend[channels_spend > 0]
 
-    def train_sp_model(self):
-        self.sp_model.train()
-
-    def train_model(self):
-        # alternative method
-        self.model.train()
-
-    def calculate_roi(self):
-        GA_df = self.data_processing.get_GA_df()
-        conversion_paths = GA_df.loc[GA_df['converted_eventually'] == 1]
-
-        funnel_df = self.data_processing.get_funnel_df()
-        channels_spend = funnel_df.groupby(['Traffic_source']).agg('sum')['Cost']
         for channel_name, channel_spend in channels_spend.iteritems():
-            self.channels_roi[channel_name] = None
+            conv_paths_w_channel_df = conversion_paths[conversion_paths['source_medium'] == channel_name]
+            ch_idx = self.ch_to_idx_map[channel_name]
+            attribution = attributions[ch_idx]
+            _return = 0
+            for client, path in conv_paths_w_channel_df.groupby(level=0):
+                nr_channel_touchpts = len(path)
+                conversion_value = path['conversion_value'].max()
+                _return += nr_channel_touchpts * attribution * conversion_value
+            self.channels_roi[channel_name] = _return / channel_spend
 
-    def calculate_channel_budgets(self):
-        pass
+    def calculate_channels_budgets(self):
+        for channel_name, channel_roi in self.channels_roi:
+            roi_proportion = channel_roi / sum(self.channels_roi.values())
+            self.channels_budgets[channel_name] = roi_proportion * self.total_budget
 
     def back_evaluation(self):
-        GA_df = self.data_processing.get_GA_df()
-        print(GA_df.head(10))
-        conversion_blacklist = []
+        client_blacklist = []
         total_nr_conversions, total_conversion_value, total_cost = 0, 0, 0
-       # for _ in events:
-       #     if sequence not in conversion_blacklist:
-       #         if
+        for client_id, path in self.GA_df.groupby(level=0):
+            if sequence not in conversion_blacklist:
+                #if
 
 
 if __name__ == '__main__':
@@ -61,6 +55,13 @@ if __name__ == '__main__':
     use_time = True
     total_budget = 100000
 
-    evaluation = Evaluation(start_date, end_date, file_path_mp, nr_top_ch, use_time, train_prop, ratio_maj_min_class,
-                            total_budget)
-    evaluation.calculate_roi()
+    model = LR(start_date, end_date, file_path_mp, nr_top_ch, use_time, train_prop, ratio_maj_min_class)
+    model.train()
+    attributions = model.get_attributions()
+    print('attributions', attributions)
+    GA_df = model.get_GA_df()
+    idx_to_ch_map = model.get_idx_to_ch_map()
+    ch_to_idx_map = model.get_ch_to_idx_map()
+
+    evaluation = Evaluation(GA_df, total_budget, attributions, idx_to_ch_map, ch_to_idx_map)
+    evaluation.calculate_channels_roi()

@@ -16,6 +16,7 @@ class ModelDataLoader:
         self.read_data()
         self.create_clients_dict()
 
+
     def read_data(self):
         self.data_processing.process_all()
         self.GA_df = self.data_processing.get_GA_df()
@@ -114,6 +115,12 @@ class ModelDataLoader:
 
     def get_idx_to_ch_map(self):
         return self.idx_to_ch
+
+    def get_ch_to_idx_map(self):
+        return self.ch_to_idx
+
+    def get_GA_df(self):
+        return self.GA_df
 
 
 if __name__ == '__main__':

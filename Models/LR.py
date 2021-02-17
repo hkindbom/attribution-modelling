@@ -45,6 +45,7 @@ class LR:
 
     def plot_attributions(self):
         coefs = self.get_coefs()
+        print('coefs', coefs)
         ch_names = []
         attributions = []
         for idx, coef in enumerate(coefs):
@@ -56,6 +57,21 @@ class LR:
         plt.title('Attributions - LR model')
         plt.axhline([0])
         plt.show()
+
+    def get_attributions(self):
+        coefs = self.get_coefs()
+        non_zero_coefs = [max(coef, 0) for coef in coefs]
+        channel_attributions = [coef/sum(non_zero_coefs) for coef in non_zero_coefs]
+        return channel_attributions
+
+    def get_GA_df(self):
+        return self.data_loader.get_GA_df()
+
+    def get_idx_to_ch_map(self):
+        return self.data_loader.get_idx_to_ch_map()
+
+    def get_ch_to_idx_map(self):
+        return self.data_loader.get_ch_to_idx_map()
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)

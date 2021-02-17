@@ -87,6 +87,22 @@ class SP:
         plt.title('Attributions - SP model')
         plt.show()
 
+    def get_attributions(self):
+        channel_attributions = []
+        for channel_idx in self.prob:
+            channel_attributions.append(self.prob[channel_idx])
+        channel_attributions = [attribution/sum(channel_attributions) for attribution in channel_attributions]
+        return channel_attributions
+
+    def get_GA_df(self):
+        return self.data_loader.get_GA_df()
+
+    def get_idx_to_ch_map(self):
+        return self.data_loader.get_idx_to_ch_map()
+
+    def get_ch_to_idx_map(self):
+        return self.data_loader.get_ch_to_idx_map()
+
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
