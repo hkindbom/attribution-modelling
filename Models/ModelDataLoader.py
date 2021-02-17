@@ -122,6 +122,9 @@ class ModelDataLoader:
     def get_GA_df(self):
         return self.GA_df
 
+    def get_converted_clients_df(self):
+        return self.converted_clients_df
+
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)

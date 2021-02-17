@@ -3,8 +3,9 @@ from SP import SP
 from LR import LR
 
 class Evaluation:
-    def __init__(self, GA_df, total_budget, attributions, idx_to_ch_map, ch_to_idx_map):
+    def __init__(self, GA_df, converted_clients_df, total_budget, attributions, idx_to_ch_map, ch_to_idx_map):
         self.GA_df = GA_df
+        self.converted_clients_df = converted_clients_df
         self.total_budget = total_budget
         self.attributions = attributions
         self.idx_to_ch_map = idx_to_ch_map
@@ -35,7 +36,7 @@ class Evaluation:
 
     def back_evaluation(self):
         client_blacklist = []
-        total_nr_conversions, total_conversion_value, total_cost = 0, 0, 0
+        total_nr_conversions, total_conversion_value, total_cost, total_ltv = 0, 0, 0, 0
         for client_id, path in self.GA_df.groupby(level=0):
             for _, session in path.iterrows():
                 if client_id not in client_blacklist:
@@ -49,27 +50,36 @@ class Evaluation:
 
                     if budget_allows:
                         total_cost += cost
-                        total_nr_conversions += session['conversion']
-                        total_conversion_value += session['conversion_value']
+                        if session['conversion']:
+                            ltv = self.get_client_LTV(client_id)
+                            total_nr_conversions += session['conversion']
+                            total_conversion_value += session['conversion_value']
+                            total_ltv += ltv
                     else:
                         client_blacklist.append(client_id)
         print('Total conversions:', total_nr_conversions)
         print('Total conversion value:', total_conversion_value)
+        print('Total LTV:', total_ltv)
         print('Total cost spent:', total_cost, 'out of', self.total_budget)
+
+    def get_client_LTV(self, client_id):
+        converted_client = self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client_id]
+        if not converted_client.empty:
+            return converted_client.iloc[0]['LTV']
+        return 0
 
     def evaluate(self):
         self.calculate_channels_roi()
         self.calculate_channels_budgets()
         self.back_evaluation()
 
-
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
-    start_date = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
+    file_path_mp = '../Data/Mixpanel_data_2021-02-17.csv'
+    start_date = pd.Timestamp(year=2021, month=2, day=4, hour=0, minute=0, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=5, hour=23, minute=59, tz='UTC')
 
     train_prop = 0.7
     nr_top_ch = 10
@@ -81,8 +91,9 @@ if __name__ == '__main__':
     model.train()
     attributions = model.get_attributions()
     GA_df = model.get_GA_df()
+    converted_clients_df = model.get_converted_clients_df()
     idx_to_ch_map = model.get_idx_to_ch_map()
     ch_to_idx_map = model.get_ch_to_idx_map()
 
-    evaluation = Evaluation(GA_df, total_budget, attributions, idx_to_ch_map, ch_to_idx_map)
+    evaluation = Evaluation(GA_df, converted_clients_df, total_budget, attributions, idx_to_ch_map, ch_to_idx_map)
     evaluation.evaluate()
