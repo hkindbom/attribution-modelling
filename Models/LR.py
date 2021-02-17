@@ -45,7 +45,6 @@ class LR:
 
     def plot_attributions(self):
         coefs = self.get_coefs()
-        print('coefs', coefs)
         ch_names = []
         attributions = []
         for idx, coef in enumerate(coefs):
@@ -58,7 +57,7 @@ class LR:
         plt.axhline([0])
         plt.show()
 
-    def get_attributions(self):
+    def get_attributions(self):  # Fix nonzero attribution to non-most negative channels
         coefs = self.get_coefs()
         non_zero_coefs = [max(coef, 0) for coef in coefs]
         channel_attributions = [coef/sum(non_zero_coefs) for coef in non_zero_coefs]
