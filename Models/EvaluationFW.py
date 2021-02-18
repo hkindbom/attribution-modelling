@@ -43,7 +43,7 @@ class Evaluation:
                     cost = session['cost']
                     channel = session['source_medium']
                     budget_allows = True
-                    if channel in self.channels_budgets.keys():
+                    if channel in self.channels_budgets:
                         if self.channels_budgets[channel] > cost:
                             self.channels_budgets[channel] -= cost
                         else:
@@ -84,10 +84,11 @@ if __name__ == '__main__':
     use_time = True
     total_budget = 1000
 
-    model = LTA(start_date, end_date, file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class)
+    model = SP(start_date=start_date, end_date=end_date, file_path_mp=file_path_mp, nr_top_ch=nr_top_ch,
+               train_prop=train_prop, ratio_maj_min_class=ratio_maj_min_class)
 
     model.train()
-    attributions = model.get_attributions()
+    attributions = model.get_normalized_attributions()
     GA_df = model.get_GA_df()
     converted_clients_df = model.get_converted_clients_df()
     ch_to_idx_map = model.get_ch_to_idx_map()

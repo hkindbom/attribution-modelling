@@ -2,6 +2,7 @@ from ModelDataLoader import ModelDataLoader
 import pandas as pd
 from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
 import matplotlib.pyplot as plt
+import numpy as np
 
 # Code inspired by SP.py in https://github.com/rk2900/deep-conv-attr
 
@@ -23,9 +24,7 @@ class SP:
 
     def train(self):
         self.load_train_test_data()
-        client_ids_train = list(self.clients_data_train.keys())
-
-        for client_id in client_ids_train:
+        for client_id in self.clients_data_train:
             self.add_client_to_model(client_id)
         self.calc_prob()
 
@@ -53,9 +52,7 @@ class SP:
     def validate(self):
         labels = []
         preds = []
-        client_ids_test = list(self.clients_data_test.keys())
-
-        for client_id in client_ids_test:
+        for client_id in self.clients_data_test:
             preds.append(self.get_prediction(client_id, self.clients_data_test))
             labels.append(self.clients_data_test[client_id]['label'])
 
@@ -75,11 +72,10 @@ class SP:
 
     def plot_attributions(self):
         channel_names = []
-        channel_attribution = []
+        channel_attribution = self.get_non_normalized_attributions()
 
-        for channel_idx in self.prob:
+        for channel_idx, _ in enumerate(self.prob):
             channel_names.append(self.idx_to_ch[channel_idx])
-            channel_attribution.append(self.prob[channel_idx])
 
         df = pd.DataFrame({'Channel': channel_names, 'Attribution': channel_attribution})
         ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
@@ -87,12 +83,16 @@ class SP:
         plt.title('Attributions - SP model')
         plt.show()
 
-    def get_attributions(self):
-        channel_attributions = []
-        for channel_idx in self.prob:
-            channel_attributions.append(self.prob[channel_idx])
-        channel_attributions = [attribution/sum(channel_attributions) for attribution in channel_attributions]
-        return channel_attributions
+    def get_non_normalized_attributions(self):
+        unnorm_attr = np.zeros(len(self.prob))
+        for ch_idx, _ in enumerate(unnorm_attr):
+            unnorm_attr[ch_idx] = self.prob[ch_idx]
+        return unnorm_attr.tolist()
+
+    def get_normalized_attributions(self):
+        unnorm_attr = self.get_non_normalized_attributions()
+        norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
+        return norm_attr
 
     def get_GA_df(self):
         return self.data_loader.get_GA_df()
@@ -107,13 +107,13 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-02-17.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
 
     train_proportion = 0.7
     nr_top_ch = 10
-    ratio_maj_min_class = 2
+    ratio_maj_min_class = 8
 
     SP_model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class)
     SP_model.train()
