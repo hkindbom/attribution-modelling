@@ -20,15 +20,14 @@ class LTA:
 
     def train(self):
         self.load_train_test_data()
-        client_ids_train = list(self.clients_data_train.keys())
-        for client_id in client_ids_train:
+        for client_id in self.clients_data_train:
             self.add_client_to_model(client_id)
         self.calc_prob()
 
     def add_client_to_model(self, client_id):
         client_label = self.clients_data_train[client_id]['label']
         last_channel_in_path = self.clients_data_train[client_id]['session_channels'][-1]
-        if last_channel_in_path in self.channel_value.keys():
+        if last_channel_in_path in self.channel_value:
             self.channel_value[last_channel_in_path] += client_label
             self.channel_time[last_channel_in_path] += 1.
         else:
@@ -41,7 +40,7 @@ class LTA:
 
     def get_attributions(self):
         channel_attributions = []
-        for channel_idx in self.prob.keys():
+        for channel_idx in self.prob:
             channel_attributions.append(self.prob[channel_idx])
         channel_attributions = [attribution/sum(channel_attributions) for attribution in channel_attributions]
         return channel_attributions
@@ -50,7 +49,7 @@ class LTA:
         channel_names = []
         channel_attribution = []
 
-        for channel_idx in self.prob.keys():
+        for channel_idx in self.prob:
             channel_names.append(self.idx_to_ch[channel_idx])
             channel_attribution.append(self.prob[channel_idx])
 
@@ -68,7 +67,7 @@ class LTA:
     def validate(self):
         labels = []
         preds = []
-        client_ids_test = list(self.clients_data_test.keys())
+        client_ids_test = list(self.clients_data_test)
         for client_id in client_ids_test:
             preds.append(self.get_prediction(client_id, self.clients_data_test))
             labels.append(self.clients_data_test[client_id]['label'])

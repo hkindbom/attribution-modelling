@@ -84,9 +84,7 @@ if __name__ == '__main__':
     use_time = True
     total_budget = 1000
 
-    #model = LR(start_date, end_date, file_path_mp, nr_top_ch, use_time, train_prop, ratio_maj_min_class)
-    #model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class)
-    model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class)
+    model = LTA(start_date, end_date, file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class)
 
     model.train()
     attributions = model.get_attributions()
