@@ -27,13 +27,13 @@ class LTA:
 
     def add_client_to_model(self, client_id):
         client_label = self.clients_data_train[client_id]['label']
-        last_channel = self.clients_data_train[client_id]['session_channels'][-1]
-        if last_channel in self.channel_value:
-            self.channel_value[last_channel] += client_label
-            self.channel_time[last_channel] += 1.
+        last_channel_in_path = self.clients_data_train[client_id]['session_channels'][-1]
+        if last_channel_in_path in self.channel_value.keys():
+            self.channel_value[last_channel_in_path] += client_label
+            self.channel_time[last_channel_in_path] += 1.
         else:
-            self.channel_value[last_channel] = client_label
-            self.channel_time[last_channel] = 1.
+            self.channel_value[last_channel_in_path] = client_label
+            self.channel_time[last_channel_in_path] = 1.
 
     def calc_prob(self):
         for channel_idx in self.channel_value:
