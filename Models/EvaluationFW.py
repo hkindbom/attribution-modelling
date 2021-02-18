@@ -1,6 +1,7 @@
 import pandas as pd
 from SP import SP
 from LR import LR
+from LTA import LTA
 
 class Evaluation:
     def __init__(self, GA_df, converted_clients_df, total_budget, attributions, ch_to_idx_map):
@@ -85,6 +86,7 @@ if __name__ == '__main__':
 
     model = LR(start_date, end_date, file_path_mp, nr_top_ch, use_time, train_prop, ratio_maj_min_class)
     #model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class)
+    #model = LTA(....)
 
     model.train()
     attributions = model.get_attributions()
