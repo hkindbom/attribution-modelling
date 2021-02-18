@@ -89,7 +89,7 @@ class SP:
 
     def get_attributions(self):
         channel_attributions = []
-        for channel_idx in self.prob:
+        for channel_idx in self.prob.keys():
             channel_attributions.append(self.prob[channel_idx])
         channel_attributions = [attribution/sum(channel_attributions) for attribution in channel_attributions]
         return channel_attributions
