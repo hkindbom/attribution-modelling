@@ -59,7 +59,7 @@ class LR:
 
     def get_attributions(self):
         coefs = self.get_coefs()
-        minimum = min(coefs)
+        minimum = coefs.min()
         if minimum < 0:
             coefs += abs(minimum)
         channel_attributions = coefs/coefs.sum()

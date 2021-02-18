@@ -64,7 +64,7 @@ class Evaluation:
         converted_client_df = self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client_id]
         if not converted_client_df.empty:
             return converted_client_df.iloc[0]['LTV']
-        return
+        return 0
 
     def evaluate(self):
         self.calculate_channels_roi()
