@@ -20,12 +20,12 @@ class Evaluation:
         for channel_name, channel_spend in channels_spend.iteritems():
             conv_paths_w_channel_df = conversion_paths_df[conversion_paths_df['source_medium'] == channel_name]
             ch_idx = self.ch_to_idx_map[channel_name]
-            attribution = attributions[ch_idx]
+            attribution = self.attributions[ch_idx]
             _return = 0
-            for client, path in conv_paths_w_channel_df.groupby(level=0):
-                nr_channel_touchpts = len(path)
-                conversion_value = path['conversion_value'].max()
-                _return += nr_channel_touchpts * attribution * conversion_value
+            for client, path_w_channel in conv_paths_w_channel_df.groupby(level=0):
+                nr_channel_occurences_touchpts = len(path_w_channel)
+                conversion_value = path_w_channel['conversion_value'].max()
+                _return += nr_channel_occurences_touchpts * attribution * conversion_value
             self.channels_roi[channel_name] = _return / channel_spend
 
     def calculate_channels_budgets(self):
@@ -41,12 +41,12 @@ class Evaluation:
                 if client_id not in client_blacklist:
                     cost = session['cost']
                     channel = session['source_medium']
+                    budget_allows = True
                     if channel in self.channels_budgets.keys():
-                        budget_allows = self.channels_budgets[channel] > cost
-                        self.channels_budgets[channel] -= budget_allows * cost
-                    else:  # "Free" channel or missing data on spend
-                        budget_allows = True
-
+                        if self.channels_budgets[channel] > cost:
+                            self.channels_budgets[channel] -= cost
+                        else:
+                            budget_allows = False
                     if budget_allows:
                         total_cost += cost
                         if session['conversion']:
@@ -61,10 +61,10 @@ class Evaluation:
         print('Total cost spent:', total_cost, 'out of', self.total_budget)
 
     def get_client_LTV(self, client_id):
-        converted_client = self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client_id]
-        if not converted_client.empty:
-            return converted_client.iloc[0]['LTV']
-        return 0
+        converted_client_df = self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client_id]
+        if not converted_client_df.empty:
+            return converted_client_df.iloc[0]['LTV']
+        return
 
     def evaluate(self):
         self.calculate_channels_roi()
@@ -83,7 +83,9 @@ if __name__ == '__main__':
     use_time = True
     total_budget = 1000
 
-    model = LR(start_date, end_date, file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class)
+    model = LR(start_date, end_date, file_path_mp, nr_top_ch, use_time, train_prop, ratio_maj_min_class)
+    #model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class)
+
     model.train()
     attributions = model.get_attributions()
     GA_df = model.get_GA_df()

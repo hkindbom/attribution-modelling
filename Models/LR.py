@@ -59,13 +59,11 @@ class LR:
 
     def get_attributions(self):
         coefs = self.get_coefs()
-        coefs = [0 if coef == min(coefs) else coef for coef in coefs]
-        increment = max(coefs)/len(coefs)
-        while min(coefs) < 0:
-            coefs = [increment if coef == min(coefs) else coef for coef in coefs]
-            increment += increment
-        channel_attributions = [coef/sum(coefs) for coef in coefs]
-        return channel_attributions
+        minimum = min(coefs)
+        if minimum < 0:
+            coefs += abs(minimum)
+        channel_attributions = coefs/coefs.sum()
+        return channel_attributions.tolist()
 
     def get_GA_df(self):
         return self.data_loader.get_GA_df()
