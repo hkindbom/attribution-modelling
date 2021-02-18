@@ -3,23 +3,22 @@ from SP import SP
 from LR import LR
 
 class Evaluation:
-    def __init__(self, GA_df, converted_clients_df, total_budget, attributions, idx_to_ch_map, ch_to_idx_map):
+    def __init__(self, GA_df, converted_clients_df, total_budget, attributions, ch_to_idx_map):
         self.GA_df = GA_df
         self.converted_clients_df = converted_clients_df
         self.total_budget = total_budget
         self.attributions = attributions
-        self.idx_to_ch_map = idx_to_ch_map
         self.ch_to_idx_map = ch_to_idx_map
         self.channels_roi = {}
         self.channels_budgets = {}
 
     def calculate_channels_roi(self):
-        conversion_paths = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
+        conversion_paths_df = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
         channels_spend = self.GA_df.groupby(['source_medium']).agg('sum')['cost']
         channels_spend = channels_spend[channels_spend > 0]
 
         for channel_name, channel_spend in channels_spend.iteritems():
-            conv_paths_w_channel_df = conversion_paths[conversion_paths['source_medium'] == channel_name]
+            conv_paths_w_channel_df = conversion_paths_df[conversion_paths_df['source_medium'] == channel_name]
             ch_idx = self.ch_to_idx_map[channel_name]
             attribution = attributions[ch_idx]
             _return = 0
@@ -45,16 +44,15 @@ class Evaluation:
                     if channel in self.channels_budgets.keys():
                         budget_allows = self.channels_budgets[channel] > cost
                         self.channels_budgets[channel] -= budget_allows * cost
-                    else:
+                    else:  # "Free" channel or missing data on spend
                         budget_allows = True
 
                     if budget_allows:
                         total_cost += cost
                         if session['conversion']:
-                            ltv = self.get_client_LTV(client_id)
                             total_nr_conversions += session['conversion']
                             total_conversion_value += session['conversion_value']
-                            total_ltv += ltv
+                            total_ltv += self.get_client_LTV(client_id)
                     else:
                         client_blacklist.append(client_id)
         print('Total conversions:', total_nr_conversions)
@@ -73,13 +71,11 @@ class Evaluation:
         self.calculate_channels_budgets()
         self.back_evaluation()
 
-if __name__ == '__main__':
-    pd.set_option('display.max_columns', None)
-    pd.set_option('display.max_rows', None)
 
+if __name__ == '__main__':
     file_path_mp = '../Data/Mixpanel_data_2021-02-17.csv'
-    start_date = pd.Timestamp(year=2021, month=2, day=4, hour=0, minute=0, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=5, hour=23, minute=59, tz='UTC')
+    start_date = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=16, hour=23, minute=59, tz='UTC')
 
     train_prop = 0.7
     nr_top_ch = 10
@@ -92,8 +88,7 @@ if __name__ == '__main__':
     attributions = model.get_attributions()
     GA_df = model.get_GA_df()
     converted_clients_df = model.get_converted_clients_df()
-    idx_to_ch_map = model.get_idx_to_ch_map()
     ch_to_idx_map = model.get_ch_to_idx_map()
 
-    evaluation = Evaluation(GA_df, converted_clients_df, total_budget, attributions, idx_to_ch_map, ch_to_idx_map)
+    evaluation = Evaluation(GA_df, converted_clients_df, total_budget, attributions, ch_to_idx_map)
     evaluation.evaluate()

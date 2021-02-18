@@ -69,9 +69,6 @@ class LR:
     def get_converted_clients_df(self):
         return self.data_loader.get_converted_clients_df()
 
-    def get_idx_to_ch_map(self):
-        return self.data_loader.get_idx_to_ch_map()
-
     def get_ch_to_idx_map(self):
         return self.data_loader.get_ch_to_idx_map()
 
