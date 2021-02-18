@@ -16,7 +16,6 @@ class ModelDataLoader:
         self.read_data()
         self.create_clients_dict()
 
-
     def read_data(self):
         self.data_processing.process_all()
         self.GA_df = self.data_processing.get_GA_df()

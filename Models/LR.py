@@ -57,10 +57,14 @@ class LR:
         plt.axhline([0])
         plt.show()
 
-    def get_attributions(self):  # Fix nonzero attribution to non-most negative channels
+    def get_attributions(self):
         coefs = self.get_coefs()
-        non_zero_coefs = [max(coef, 0) for coef in coefs]
-        channel_attributions = [coef/sum(non_zero_coefs) for coef in non_zero_coefs]
+        coefs = [0 if coef == min(coefs) else coef for coef in coefs]
+        increment = max(coefs)/len(coefs)
+        while min(coefs) < 0:
+            coefs = [increment if coef == min(coefs) else coef for coef in coefs]
+            increment += increment
+        channel_attributions = [coef/sum(coefs) for coef in coefs]
         return channel_attributions
 
     def get_GA_df(self):

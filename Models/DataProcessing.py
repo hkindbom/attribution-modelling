@@ -51,7 +51,6 @@ class ApiDataBigQuery:
     def add_cost_per_click(self):
         self.funnel_df['cpc'] = self.funnel_df['Cost'] / self.funnel_df['Clicks']
         self.funnel_df.loc[~np.isfinite(self.funnel_df['cpc']), 'cpc'] = np.nan  # Handle div by 0
-        self.funnel_df.to_csv('hej.csv')
 
     def get_funnel_df(self):
         return self.funnel_df
