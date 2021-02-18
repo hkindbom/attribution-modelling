@@ -21,6 +21,7 @@ class LR:
             get_feature_matrix_split(self.train_prop, self.use_time)
 
     def train(self):
+        self.load_train_test_data()
         self.log_reg.fit(self.x_train, self.y_train)
 
     def get_coefs(self):
@@ -56,6 +57,23 @@ class LR:
         plt.axhline([0])
         plt.show()
 
+    def get_attributions(self):
+        coefs = self.get_coefs()
+        minimum = coefs.min()
+        if minimum < 0:
+            coefs += abs(minimum)
+        channel_attributions = coefs/coefs.sum()
+        return channel_attributions.tolist()
+
+    def get_GA_df(self):
+        return self.data_loader.get_GA_df()
+
+    def get_converted_clients_df(self):
+        return self.data_loader.get_converted_clients_df()
+
+    def get_ch_to_idx_map(self):
+        return self.data_loader.get_ch_to_idx_map()
+
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
@@ -70,7 +88,6 @@ if __name__ == '__main__':
     use_time = True
 
     model = LR(start_date, end_date, file_path_mp, nr_top_ch, use_time, train_proportion, ratio_maj_min_class)
-    model.load_train_test_data()
     model.train()
     model.validate()
     model.plot_attributions()

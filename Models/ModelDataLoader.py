@@ -115,6 +115,15 @@ class ModelDataLoader:
     def get_idx_to_ch_map(self):
         return self.idx_to_ch
 
+    def get_ch_to_idx_map(self):
+        return self.ch_to_idx
+
+    def get_GA_df(self):
+        return self.GA_df
+
+    def get_converted_clients_df(self):
+        return self.converted_clients_df
+
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
