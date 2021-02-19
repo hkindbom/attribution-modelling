@@ -74,6 +74,7 @@ class Experiments:
         converted_clients_df = self.data_loader.get_converted_clients_df()
 
         for model_name in self.attributions:
+            print(model_name)
             evaluation = Evaluation(GA_df, converted_clients_df, total_budget, self.attributions[model_name], self.ch_to_idx)
             evaluation.evaluate()
 
@@ -89,7 +90,7 @@ if __name__ == '__main__':
 
     train_proportion = 0.7
     nr_top_ch = 10
-    ratio_maj_min_class = 6
+    ratio_maj_min_class = 2
     use_time = True
     total_budget = 1000
 
