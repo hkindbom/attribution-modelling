@@ -1,15 +1,12 @@
 from ModelDataLoader import ModelDataLoader
-import pandas as pd
 from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
 import matplotlib.pyplot as plt
+import pandas as pd
 import numpy as np
 
-# Code inspired by SP.py in https://github.com/rk2900/deep-conv-attr
 
-class SP:
-    def __init__(self, start_date, end_date, file_path_mp, nr_top_ch,
-                 train_prop=0.8, ratio_maj_min_class=1):
-
+class LTA:
+    def __init__(self, start_date, end_date, file_path_mp, nr_top_ch, train_prop=0.8, ratio_maj_min_class=1):
         self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
         self.clients_data_train = {}
         self.clients_data_test = {}
@@ -30,29 +27,51 @@ class SP:
 
     def add_client_to_model(self, client_id):
         client_label = self.clients_data_train[client_id]['label']
-        for channel_idx in self.clients_data_train[client_id]['session_channels']:
-            if channel_idx in self.channel_value:
-                self.channel_value[channel_idx] += client_label
-                self.channel_time[channel_idx] += 1.
-            else:
-                self.channel_value[channel_idx] = client_label
-                self.channel_time[channel_idx] = 1.
+        last_channel_in_path = self.clients_data_train[client_id]['session_channels'][-1]
+        if last_channel_in_path in self.channel_value:
+            self.channel_value[last_channel_in_path] += client_label
+            self.channel_time[last_channel_in_path] += 1.
+        else:
+            self.channel_value[last_channel_in_path] = client_label
+            self.channel_time[last_channel_in_path] = 1.
 
     def calc_prob(self):
         for channel_idx in self.channel_value:
             self.prob[channel_idx] = self.channel_value[channel_idx] / self.channel_time[channel_idx]
 
+    def get_non_normalized_attributions(self):
+        unnorm_attr = []
+        for ch_idx in range(len(self.prob)):
+            unnorm_attr.append(self.prob[ch_idx])
+        return unnorm_attr
+
+    def get_normalized_attributions(self):
+        unnorm_attr = self.get_non_normalized_attributions()
+        norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
+        return norm_attr
+
+    def plot_attributions(self):
+        channel_attribution = self.get_non_normalized_attributions()
+        channel_names = []
+        for ch_idx in range(len(self.prob)):
+            channel_names.append(self.idx_to_ch[ch_idx])
+
+        df = pd.DataFrame({'Channel': channel_names, 'Attribution': channel_attribution})
+        ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
+        plt.tight_layout()
+        plt.title('Attributions - LTA model')
+        plt.show()
+
     def get_prediction(self, client_id, clients_data):
-        pred = 1
-        for channel_idx in clients_data[client_id]['session_channels']:
-            mult_factor = (1 - self.prob[channel_idx]) if channel_idx in self.prob else 1
-            pred *= mult_factor
-        return round(1 - pred)
+        channel_idx = clients_data[client_id]['session_channels'][-1]
+        pred = self.prob[channel_idx]
+        return round(pred)
 
     def validate(self):
         labels = []
         preds = []
-        for client_id in self.clients_data_test:
+        client_ids_test = list(self.clients_data_test)
+        for client_id in client_ids_test:
             preds.append(self.get_prediction(client_id, self.clients_data_test))
             labels.append(self.clients_data_test[client_id]['label'])
 
@@ -67,32 +86,8 @@ class SP:
         print('AUC: ', auc)
         print('Log-loss: ', logloss)
         print('tn:', tn, ' fp:', fp, ' fn:', fn, ' tp:', tp)
-        print('precision: ', tp / (tp + fp), ' ability of the classifier not to label as positive a sample that is negative')
-        print('recall: ', tp / (tp + fn), ' ability of the classifier to find all the positive samples')
-
-    def plot_attributions(self):
-        channel_names = []
-        channel_attribution = self.get_non_normalized_attributions()
-
-        for ch_idx in range(len(self.prob)):
-            channel_names.append(self.idx_to_ch[ch_idx])
-
-        df = pd.DataFrame({'Channel': channel_names, 'Attribution': channel_attribution})
-        ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
-        plt.tight_layout()
-        plt.title('Attributions - SP model')
-        plt.show()
-
-    def get_non_normalized_attributions(self):
-        unnorm_attr = []
-        for ch_idx in range(len(self.prob)):
-            unnorm_attr.append(self.prob[ch_idx])
-        return unnorm_attr
-
-    def get_normalized_attributions(self):
-        unnorm_attr = self.get_non_normalized_attributions()
-        norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
-        return norm_attr
+        print('precision: ', tp / (tp + fp))
+        print('recall: ', tp / (tp + fn))
 
     def get_GA_df(self):
         return self.data_loader.get_GA_df()
@@ -103,19 +98,20 @@ class SP:
     def get_ch_to_idx_map(self):
         return self.data_loader.get_ch_to_idx_map()
 
+
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-17.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
     train_proportion = 0.7
     nr_top_ch = 10
-    ratio_maj_min_class = 6
+    ratio_maj_min_class = 2
 
-    SP_model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class)
-    SP_model.train()
-    SP_model.validate()
-    SP_model.plot_attributions()
+    LTA_model = LTA(start_date, end_date, file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class)
+    LTA_model.train()
+    LTA_model.validate()
+    LTA_model.plot_attributions()

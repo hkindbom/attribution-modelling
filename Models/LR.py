@@ -46,18 +46,16 @@ class LR:
     def plot_attributions(self):
         coefs = self.get_coefs()
         ch_names = []
-        attributions = []
-        for idx, coef in enumerate(coefs):
-            attributions.append(coef)
+        for idx, _ in enumerate(coefs):
             ch_names.append(self.idx_to_ch[idx])
-        df = pd.DataFrame({'Channel': ch_names, 'Attribution': attributions})
+        df = pd.DataFrame({'Channel': ch_names, 'Attribution': coefs})
         ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
         plt.tight_layout()
         plt.title('Attributions - LR model')
         plt.axhline([0])
         plt.show()
 
-    def get_attributions(self):
+    def get_normalized_attributions(self):
         coefs = self.get_coefs()
         minimum = coefs.min()
         if minimum < 0:
@@ -78,7 +76,7 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-02-17.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
 
