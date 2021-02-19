@@ -74,8 +74,8 @@ class SP:
         channel_names = []
         channel_attribution = self.get_non_normalized_attributions()
 
-        for channel_idx, _ in enumerate(self.prob):
-            channel_names.append(self.idx_to_ch[channel_idx])
+        for ch_idx in range(len(self.prob)):
+            channel_names.append(self.idx_to_ch[ch_idx])
 
         df = pd.DataFrame({'Channel': channel_names, 'Attribution': channel_attribution})
         ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
@@ -84,10 +84,10 @@ class SP:
         plt.show()
 
     def get_non_normalized_attributions(self):
-        unnorm_attr = np.zeros(len(self.prob))
-        for ch_idx, _ in enumerate(unnorm_attr):
-            unnorm_attr[ch_idx] = self.prob[ch_idx]
-        return unnorm_attr.tolist()
+        unnorm_attr = []
+        for ch_idx in range(len(self.prob)):
+            unnorm_attr.append(self.prob[ch_idx])
+        return unnorm_attr
 
     def get_normalized_attributions(self):
         unnorm_attr = self.get_non_normalized_attributions()
@@ -113,7 +113,7 @@ if __name__ == '__main__':
 
     train_proportion = 0.7
     nr_top_ch = 10
-    ratio_maj_min_class = 8
+    ratio_maj_min_class = 6
 
     SP_model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class)
     SP_model.train()

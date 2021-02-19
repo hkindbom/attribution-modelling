@@ -40,10 +40,10 @@ class LTA:
             self.prob[channel_idx] = self.channel_value[channel_idx] / self.channel_time[channel_idx]
 
     def get_non_normalized_attributions(self):
-        unnorm_attr = np.zeros(len(self.prob))
-        for ch_idx, _ in enumerate(unnorm_attr):
-            unnorm_attr[ch_idx] = self.prob[ch_idx]
-        return unnorm_attr.tolist()
+        unnorm_attr = []
+        for ch_idx in range(len(self.prob)):
+            unnorm_attr.append(self.prob[ch_idx])
+        return unnorm_attr
 
     def get_normalized_attributions(self):
         unnorm_attr = self.get_non_normalized_attributions()
@@ -53,8 +53,8 @@ class LTA:
     def plot_attributions(self):
         channel_attribution = self.get_non_normalized_attributions()
         channel_names = []
-        for channel_idx, _ in enumerate(self.prob):
-            channel_names.append(self.idx_to_ch[channel_idx])
+        for ch_idx in range(len(self.prob)):
+            channel_names.append(self.idx_to_ch[ch_idx])
 
         df = pd.DataFrame({'Channel': channel_names, 'Attribution': channel_attribution})
         ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
