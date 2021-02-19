@@ -89,7 +89,7 @@ if __name__ == '__main__':
 
     train_proportion = 0.7
     nr_top_ch = 10
-    ratio_maj_min_class = 1
+    ratio_maj_min_class = 6
     use_time = True
     total_budget = 1000
 

@@ -1,7 +1,6 @@
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
-from ModelDataLoader import ModelDataLoader
 import matplotlib.pyplot as plt
 
 class LR:
