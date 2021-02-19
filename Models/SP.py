@@ -8,21 +8,16 @@ import numpy as np
 
 class SP:
     def __init__(self):
-
-        #self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
         self.clients_data_train = {}
         self.clients_data_test = {}
-        #self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
         self.channel_value = {}
         self.channel_time = {}
         self.prob = {}
-        #self.train_prop = train_prop
 
     def load_train_test_data(self, clients_data_train, clients_data_test):
         self.clients_data_train, self.clients_data_test = clients_data_train, clients_data_test
 
     def train(self):
-        #self.load_train_test_data()
         for client_id in self.clients_data_train:
             self.add_client_to_model(client_id)
         self.calc_prob()
@@ -92,17 +87,6 @@ class SP:
         unnorm_attr = self.get_non_normalized_attributions()
         norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
         return norm_attr
-
-    """
-    def get_GA_df(self):
-        return self.data_loader.get_GA_df()
-
-    def get_converted_clients_df(self):
-        return self.data_loader.get_converted_clients_df()
-
-    def get_ch_to_idx_map(self):
-        return self.data_loader.get_ch_to_idx_map()
-    """
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)

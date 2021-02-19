@@ -5,23 +5,18 @@ from ModelDataLoader import ModelDataLoader
 import matplotlib.pyplot as plt
 
 class LR:
-    def __init__(self, start_date, end_date, file_path_mp, nr_top_ch, use_time=False, train_prop=0.8, ratio_maj_min_class=1):
-        self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
+    def __init__(self):
         self.log_reg = LogisticRegression()
-        self.train_prop = train_prop
-        self.use_time = use_time
-        self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
+        #self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
         self.x_train = None
         self.x_test = None
         self.y_train = None
         self.y_test = None
 
-    def load_train_test_data(self):
-        self.x_train, self.y_train, self.x_test, self.y_test = self.data_loader.\
-            get_feature_matrix_split(self.train_prop, self.use_time)
+    def load_train_test_data(self, x_train, y_train, x_test, y_test):
+        self.x_train, self.y_train, self.x_test, self.y_test = x_train, y_train, x_test, y_test
 
     def train(self):
-        self.load_train_test_data()
         self.log_reg.fit(self.x_train, self.y_train)
 
     def get_coefs(self):
@@ -63,15 +58,6 @@ class LR:
         channel_attributions = coefs/coefs.sum()
         return channel_attributions.tolist()
 
-    def get_GA_df(self):
-        return self.data_loader.get_GA_df()
-
-    def get_converted_clients_df(self):
-        return self.data_loader.get_converted_clients_df()
-
-    def get_ch_to_idx_map(self):
-        return self.data_loader.get_ch_to_idx_map()
-
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
@@ -83,9 +69,8 @@ if __name__ == '__main__':
     train_proportion = 0.7
     nr_top_ch = 10
     ratio_maj_min_class = 1
-    use_time = True
 
-    model = LR(start_date, end_date, file_path_mp, nr_top_ch, use_time, train_proportion, ratio_maj_min_class)
+    model = LR()
     model.train()
     model.validate()
     model.plot_attributions()
