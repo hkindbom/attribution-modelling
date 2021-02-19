@@ -7,23 +7,22 @@ import numpy as np
 # Code inspired by SP.py in https://github.com/rk2900/deep-conv-attr
 
 class SP:
-    def __init__(self, start_date, end_date, file_path_mp, nr_top_ch,
-                 train_prop=0.8, ratio_maj_min_class=1):
+    def __init__(self):
 
-        self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
+        #self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
         self.clients_data_train = {}
         self.clients_data_test = {}
-        self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
+        #self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
         self.channel_value = {}
         self.channel_time = {}
         self.prob = {}
-        self.train_prop = train_prop
+        #self.train_prop = train_prop
 
-    def load_train_test_data(self):
-        self.clients_data_train, self.clients_data_test = self.data_loader.get_clients_dict_split(self.train_prop)
+    def load_train_test_data(self, clients_data_train, clients_data_test):
+        self.clients_data_train, self.clients_data_test = clients_data_train, clients_data_test
 
     def train(self):
-        self.load_train_test_data()
+        #self.load_train_test_data()
         for client_id in self.clients_data_train:
             self.add_client_to_model(client_id)
         self.calc_prob()
@@ -94,6 +93,7 @@ class SP:
         norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
         return norm_attr
 
+    """
     def get_GA_df(self):
         return self.data_loader.get_GA_df()
 
@@ -102,6 +102,7 @@ class SP:
 
     def get_ch_to_idx_map(self):
         return self.data_loader.get_ch_to_idx_map()
+    """
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
@@ -115,7 +116,7 @@ if __name__ == '__main__':
     nr_top_ch = 10
     ratio_maj_min_class = 6
 
-    SP_model = SP(start_date, end_date, file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class)
+    SP_model = SP()
     SP_model.train()
     SP_model.validate()
     SP_model.plot_attributions()

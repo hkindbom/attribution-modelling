@@ -84,8 +84,7 @@ if __name__ == '__main__':
     use_time = True
     total_budget = 1000
 
-    model = SP(start_date=start_date, end_date=end_date, file_path_mp=file_path_mp, nr_top_ch=nr_top_ch,
-               train_prop=train_prop, ratio_maj_min_class=ratio_maj_min_class)
+    model = SP()
 
     model.train()
     attributions = model.get_normalized_attributions()
