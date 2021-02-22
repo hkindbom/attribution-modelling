@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
 from ModelDataLoader import ModelDataLoader
 from EvaluationFW import Evaluation
 from SP import SP
@@ -41,12 +42,25 @@ class Experiments:
         self.LR_model.train()
 
     def validate_pred(self):
-        print('SP performance')
-        self.SP_model.validate()
-        print('LTA performance')
-        self.LTA_model.validate()
-        print('LR performance')
-        self.LR_model.validate()
+        LTA_res = self.LTA_model.get_results()
+        LR_res = self.LR_model.get_results()
+        SP_res = self.SP_model.get_results()
+
+        LTA_res['model'] = 'LTA'
+        LR_res['model'] = 'LR'
+        SP_res['model'] = 'SP'
+
+        results_df = pd.DataFrame()
+        results_df = results_df.append(LTA_res, ignore_index=True)
+        results_df = results_df.append(LR_res, ignore_index=True)
+        results_df = results_df.append(SP_res, ignore_index=True)
+
+        results_df['precision'] = results_df['tp'] / (results_df['tp'] + results_df['fp'])
+        results_df['recall'] = results_df['tp'] / (results_df['tp'] + results_df['fn'])
+        results_df['accuracy'] = (results_df['tp'] + results_df['tn']) / (results_df['tn'] + results_df['tp'] + results_df['fp'] + results_df['fn'])
+
+        print(results_df.head())
+
 
     def load_attributions(self):
         self.attributions['SP'] = self.SP_model.get_normalized_attributions()
@@ -66,7 +80,7 @@ class Experiments:
         ax = df.plot.bar(x='Channel', rot=90)
         ax.set_xlabel("Source / Medium")
         plt.tight_layout()
-        plt.title('Attributions')
+        plt.title('Attributions', fontsize=16)
         plt.show()
 
     def profit_eval(self, total_budget):
@@ -90,7 +104,7 @@ if __name__ == '__main__':
 
     train_proportion = 0.7
     nr_top_ch = 10
-    ratio_maj_min_class = 2
+    ratio_maj_min_class = 1
     use_time = True
     total_budget = 1000
 

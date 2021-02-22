@@ -1,7 +1,7 @@
 import pandas as pd
 from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
 import matplotlib.pyplot as plt
-import numpy as np
+from ModelDataLoader import ModelDataLoader
 
 # Code inspired by SP.py in https://github.com/rk2900/deep-conv-attr
 
@@ -42,33 +42,37 @@ class SP:
             pred *= mult_factor
         return round(1 - pred)
 
-    def validate(self):
+    def get_results(self):
+        labels, preds = self.get_labels_and_preds()
+        tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
+        auc = roc_auc_score(labels, preds)
+        logloss = log_loss(labels, preds)
+
+        return {'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp, 'auc': auc, 'logloss': logloss}
+
+    def get_labels_and_preds(self):
         labels = []
         preds = []
         for client_id in self.clients_data_test:
             preds.append(self.get_prediction(client_id, self.clients_data_test))
             labels.append(self.clients_data_test[client_id]['label'])
+        return labels, preds
 
-        self.show_performance(labels, preds)
+    def validate(self):
+        res = self.get_results()
+        print('Accuracy ', (res['tn'] + res['tp']) / (res['tn'] + res['tp'] + res['fp'] + res['fn']))
+        print('AUC: ', res['auc'])
+        print('Log-loss: ', res['logloss'])
+        print('tn:', res['tn'], ' fp:', res['fp'], ' fn:', res['fn'], ' tp:', res['tp'])
+        print('precision: ', res['tp'] / (res['tp'] + res['fp']))
+        print('recall: ', res['tp'] / (res['tp'] + res['fn']))
 
-    def show_performance(self, labels, preds):
-        auc = roc_auc_score(labels, preds)
-        logloss = log_loss(labels, preds)
-        tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
-
-        print('Accuracy ', (tn+tp)/(tn+tp+fp+fn))
-        print('AUC: ', auc)
-        print('Log-loss: ', logloss)
-        print('tn:', tn, ' fp:', fp, ' fn:', fn, ' tp:', tp)
-        print('precision: ', tp / (tp + fp), ' ability of the classifier not to label as positive a sample that is negative')
-        print('recall: ', tp / (tp + fn), ' ability of the classifier to find all the positive samples')
-
-    def plot_attributions(self):
+    def plot_attributions(self, idx_to_ch):
         channel_names = []
         channel_attribution = self.get_non_normalized_attributions()
 
         for ch_idx in range(len(self.prob)):
-            channel_names.append(self.idx_to_ch[ch_idx])
+            channel_names.append(idx_to_ch[ch_idx])
 
         df = pd.DataFrame({'Channel': channel_names, 'Attribution': channel_attribution})
         ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
@@ -99,7 +103,11 @@ if __name__ == '__main__':
     nr_top_ch = 10
     ratio_maj_min_class = 6
 
+    data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
+    clients_data_train, clients_data_test = data_loader.get_clients_dict_split(train_proportion)
+
     SP_model = SP()
+    SP_model.load_train_test_data(clients_data_train, clients_data_test)
     SP_model.train()
     SP_model.validate()
-    SP_model.plot_attributions()
+    SP_model.plot_attributions(data_loader.get_idx_to_ch_map())
