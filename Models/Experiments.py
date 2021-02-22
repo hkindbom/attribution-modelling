@@ -1,6 +1,5 @@
 import pandas as pd
 import matplotlib.pyplot as plt
-from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
 from ModelDataLoader import ModelDataLoader
 from EvaluationFW import Evaluation
 from SP import SP
@@ -57,10 +56,10 @@ class Experiments:
 
         results_df['precision'] = results_df['tp'] / (results_df['tp'] + results_df['fp'])
         results_df['recall'] = results_df['tp'] / (results_df['tp'] + results_df['fn'])
+        results_df['F1'] = 2 * results_df['precision'] * results_df['recall'] / (results_df['precision'] + results_df['recall'])
         results_df['accuracy'] = (results_df['tp'] + results_df['tn']) / (results_df['tn'] + results_df['tp'] + results_df['fp'] + results_df['fn'])
 
-        print(results_df.head())
-
+        print(results_df)
 
     def load_attributions(self):
         self.attributions['SP'] = self.SP_model.get_normalized_attributions()
@@ -87,11 +86,13 @@ class Experiments:
         GA_df = self.data_loader.get_GA_df()
         converted_clients_df = self.data_loader.get_converted_clients_df()
 
+        eval_results_df = pd.DataFrame()
         for model_name in self.attributions:
-            print(model_name)
             evaluation = Evaluation(GA_df, converted_clients_df, total_budget, self.attributions[model_name], self.ch_to_idx)
-            evaluation.evaluate()
-
+            results = evaluation.evaluate()
+            results['model'] = model_name
+            eval_results_df = eval_results_df.append(results, ignore_index=True)
+        print(eval_results_df)
 
 if __name__ == '__main__':
 
@@ -102,7 +103,7 @@ if __name__ == '__main__':
     start_date = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
-    train_proportion = 0.7
+    train_proportion = 0.8
     nr_top_ch = 10
     ratio_maj_min_class = 1
     use_time = True
