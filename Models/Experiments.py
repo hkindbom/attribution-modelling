@@ -103,9 +103,9 @@ if __name__ == '__main__':
     start_date = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
-    train_proportion = 0.8
+    train_proportion = 0.7
     nr_top_ch = 10
-    ratio_maj_min_class = 1
+    ratio_maj_min_class = 6
     use_time = True
     total_budget = 1000
 
