@@ -1,26 +1,20 @@
-from ModelDataLoader import ModelDataLoader
 from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
 import matplotlib.pyplot as plt
 import pandas as pd
-import numpy as np
-
+from ModelDataLoader import ModelDataLoader
 
 class LTA:
-    def __init__(self, start_date, end_date, file_path_mp, nr_top_ch, train_prop=0.8, ratio_maj_min_class=1):
-        self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
+    def __init__(self):
         self.clients_data_train = {}
         self.clients_data_test = {}
-        self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
         self.channel_value = {}
         self.channel_time = {}
         self.prob = {}
-        self.train_prop = train_prop
 
-    def load_train_test_data(self):
-        self.clients_data_train, self.clients_data_test = self.data_loader.get_clients_dict_split(self.train_prop)
+    def load_train_test_data(self, clients_data_train, clients_data_test):
+        self.clients_data_train, self.clients_data_test = clients_data_train, clients_data_test
 
     def train(self):
-        self.load_train_test_data()
         for client_id in self.clients_data_train:
             self.add_client_to_model(client_id)
         self.calc_prob()
@@ -50,11 +44,11 @@ class LTA:
         norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
         return norm_attr
 
-    def plot_attributions(self):
+    def plot_attributions(self, idx_to_ch):
         channel_attribution = self.get_non_normalized_attributions()
         channel_names = []
         for ch_idx in range(len(self.prob)):
-            channel_names.append(self.idx_to_ch[ch_idx])
+            channel_names.append(idx_to_ch[ch_idx])
 
         df = pd.DataFrame({'Channel': channel_names, 'Attribution': channel_attribution})
         ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
@@ -67,36 +61,31 @@ class LTA:
         pred = self.prob[channel_idx]
         return round(pred)
 
-    def validate(self):
+    def get_results(self):
+        labels, preds = self.get_labels_and_preds()
+        tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
+        auc = roc_auc_score(labels, preds)
+        logloss = log_loss(labels, preds)
+
+        return {'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp, 'auc': auc, 'logloss': logloss}
+
+    def get_labels_and_preds(self):
         labels = []
         preds = []
         client_ids_test = list(self.clients_data_test)
         for client_id in client_ids_test:
             preds.append(self.get_prediction(client_id, self.clients_data_test))
             labels.append(self.clients_data_test[client_id]['label'])
+        return labels, preds
 
-        self.show_performance(labels, preds)
-
-    def show_performance(self, labels, preds):
-        auc = roc_auc_score(labels, preds)
-        logloss = log_loss(labels, preds)
-        tn, fp, fn, tp = confusion_matrix(labels, preds).ravel()
-
-        print('Accuracy ', (tn+tp)/(tn+tp+fp+fn))
-        print('AUC: ', auc)
-        print('Log-loss: ', logloss)
-        print('tn:', tn, ' fp:', fp, ' fn:', fn, ' tp:', tp)
-        print('precision: ', tp / (tp + fp))
-        print('recall: ', tp / (tp + fn))
-
-    def get_GA_df(self):
-        return self.data_loader.get_GA_df()
-
-    def get_converted_clients_df(self):
-        return self.data_loader.get_converted_clients_df()
-
-    def get_ch_to_idx_map(self):
-        return self.data_loader.get_ch_to_idx_map()
+    def validate(self):
+        res = self.get_results()
+        print('Accuracy ', (res['tn']+res['tp'])/(res['tn']+res['tp']+res['fp']+res['fn']))
+        print('AUC: ', res['auc'])
+        print('Log-loss: ', res['logloss'])
+        print('tn:', res['tn'], ' fp:', res['fp'], ' fn:', res['fn'], ' tp:', res['tp'])
+        print('precision: ', res['tp'] / (res['tp'] + res['fp']))
+        print('recall: ', res['tp'] / (res['tp'] + res['fn']))
 
 
 if __name__ == '__main__':
@@ -107,11 +96,15 @@ if __name__ == '__main__':
     start_date = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
-    train_proportion = 0.7
+    train_proportion = 0.8
     nr_top_ch = 10
     ratio_maj_min_class = 2
 
-    LTA_model = LTA(start_date, end_date, file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class)
+    data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
+    clients_data_train, clients_data_test = data_loader.get_clients_dict_split(train_proportion)
+
+    LTA_model = LTA()
+    LTA_model.load_train_test_data(clients_data_train, clients_data_test)
     LTA_model.train()
     LTA_model.validate()
-    LTA_model.plot_attributions()
+    LTA_model.plot_attributions(data_loader.get_idx_to_ch_map())

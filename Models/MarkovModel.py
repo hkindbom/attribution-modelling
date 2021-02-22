@@ -14,7 +14,6 @@ class MarkovModel:
         self.show_top_results = show_top_results
 
     def train_all(self):
-
         model_raw = markov_model(self.dataframe,
                                   var_path='path',
                                   var_conv='total_conversions',
@@ -28,7 +27,7 @@ class MarkovModel:
             nr_results = -1
 
         self.attributions = model_raw['result'].sort_values(by=['total_conversion_value'], ascending=False)[:nr_results]
-        self.transition_matrix = model_raw['transition_matrix'][:nr_results]
+        self.transition_matrix = model_raw['transition_matrix']
         self.removal_effects = model_raw['removal_effects'].sort_values(by=['removal_effects_conversion_value'], ascending=False)[:nr_results]
 
     def show_results(self):
@@ -58,10 +57,13 @@ class MarkovModel:
 
 if __name__ == '__main__':
     file_path_GA_aggregated = '../Data/Analytics_raw_data_sample.csv'
+    start_date = pd.Timestamp(year=2021, month=2, day=1, hour=0, minute=0, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
-    data_processing = DataProcessing(file_path_GA_aggregated = file_path_GA_aggregated)
+    data_processing = DataProcessing(start_date, end_date, file_path_GA_aggregated = file_path_GA_aggregated)
     data_processing.process_aggregated_data()
     dataframe = data_processing.get_GA_aggr_df()
+    
     order = 3
     show_top_results = True
     markovmodel = MarkovModel(dataframe, order, show_top_results)

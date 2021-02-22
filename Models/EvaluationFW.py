@@ -2,6 +2,7 @@ import pandas as pd
 from SP import SP
 from LR import LR
 from LTA import LTA
+from ModelDataLoader import ModelDataLoader
 
 class Evaluation:
     def __init__(self, GA_df, converted_clients_df, total_budget, attributions, ch_to_idx_map):
@@ -56,10 +57,15 @@ class Evaluation:
                             total_ltv += self.get_client_LTV(client_id)
                     else:
                         client_blacklist.append(client_id)
-        print('Total conversions:', total_nr_conversions)
-        print('Total conversion value:', total_conversion_value)
-        print('Total LTV:', total_ltv)
-        print('Total cost spent:', total_cost, 'out of', self.total_budget)
+
+        return {'tot_nr_conv': total_nr_conversions, 'tot_conv_val': total_conversion_value,
+                'tot_ltv': total_ltv, 'tot_cost': total_cost, 'tot_budget': self.total_budget}
+
+    def show_results(self, results):
+        print('Total conversions:', results['tot_nr_conv'])
+        print('Total conversion value:', results['tot_conv_val'])
+        print('Total LTV:', results['tot_ltv'])
+        print('Total cost spent:', results['tot_cost'], 'out of', results['tot_budget'])
 
     def get_client_LTV(self, client_id):
         converted_client_df = self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client_id]
@@ -70,7 +76,8 @@ class Evaluation:
     def evaluate(self):
         self.calculate_channels_roi()
         self.calculate_channels_budgets()
-        self.back_evaluation()
+        results = self.back_evaluation()
+        return results
 
 
 if __name__ == '__main__':
@@ -84,14 +91,18 @@ if __name__ == '__main__':
     use_time = True
     total_budget = 1000
 
-    model = SP(start_date=start_date, end_date=end_date, file_path_mp=file_path_mp, nr_top_ch=nr_top_ch,
-               train_prop=train_prop, ratio_maj_min_class=ratio_maj_min_class)
+    data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
+    clients_data_train, clients_data_test = data_loader.get_clients_dict_split(train_prop)
 
+    GA_df = data_loader.get_GA_df()
+    converted_clients_df = data_loader.get_converted_clients_df()
+    ch_to_idx_map = data_loader.get_ch_to_idx_map()
+
+    model = SP()
+    model.load_train_test_data(clients_data_train, clients_data_test)
     model.train()
     attributions = model.get_normalized_attributions()
-    GA_df = model.get_GA_df()
-    converted_clients_df = model.get_converted_clients_df()
-    ch_to_idx_map = model.get_ch_to_idx_map()
 
     evaluation = Evaluation(GA_df, converted_clients_df, total_budget, attributions, ch_to_idx_map)
-    evaluation.evaluate()
+    results = evaluation.evaluate()
+    evaluation.show_results(results)

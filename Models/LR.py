@@ -1,27 +1,21 @@
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
-from ModelDataLoader import ModelDataLoader
 import matplotlib.pyplot as plt
+from ModelDataLoader import ModelDataLoader
 
 class LR:
-    def __init__(self, start_date, end_date, file_path_mp, nr_top_ch, use_time=False, train_prop=0.8, ratio_maj_min_class=1):
-        self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
+    def __init__(self):
         self.log_reg = LogisticRegression()
-        self.train_prop = train_prop
-        self.use_time = use_time
-        self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
         self.x_train = None
         self.x_test = None
         self.y_train = None
         self.y_test = None
 
-    def load_train_test_data(self):
-        self.x_train, self.y_train, self.x_test, self.y_test = self.data_loader.\
-            get_feature_matrix_split(self.train_prop, self.use_time)
+    def load_train_test_data(self, x_train, y_train, x_test, y_test):
+        self.x_train, self.y_train, self.x_test, self.y_test = x_train, y_train, x_test, y_test
 
     def train(self):
-        self.load_train_test_data()
         self.log_reg.fit(self.x_train, self.y_train)
 
     def get_coefs(self):
@@ -30,24 +24,28 @@ class LR:
     def get_predictions(self, x):
         return self.log_reg.predict(x)
 
-    def validate(self):
+    def get_results(self):
         preds = self.get_predictions(self.x_test)
+        tn, fp, fn, tp = confusion_matrix(self.y_test, preds).ravel()
         auc = roc_auc_score(self.y_test, preds)
         logloss = log_loss(self.y_test, preds)
-        tn, fp, fn, tp = confusion_matrix(self.y_test, preds).ravel()
 
-        print('Accuracy ', (tn + tp) / (tn + tp + fp + fn))
-        print('AUC: ', auc)
-        print('Log-loss: ', logloss)
-        print('tn:', tn, ' fp:', fp, ' fn:', fn, ' tp:', tp)
-        print('precision: ', tp / (tp + fp))
-        print('recall: ', tp / (tp + fn))
+        return {'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp, 'auc': auc, 'logloss': logloss}
 
-    def plot_attributions(self):
+    def validate(self):
+        res = self.get_results()
+        print('Accuracy ', (res['tn'] + res['tp']) / (res['tn'] + res['tp'] + res['fp'] + res['fn']))
+        print('AUC: ', res['auc'])
+        print('Log-loss: ', res['logloss'])
+        print('tn:', res['tn'], ' fp:', res['fp'], ' fn:', res['fn'], ' tp:', res['tp'])
+        print('precision: ', res['tp'] / (res['tp'] + res['fp']))
+        print('recall: ', res['tp'] / (res['tp'] + res['fn']))
+
+    def plot_attributions(self, idx_to_ch):
         coefs = self.get_coefs()
         ch_names = []
         for idx, _ in enumerate(coefs):
-            ch_names.append(self.idx_to_ch[idx])
+            ch_names.append(idx_to_ch[idx])
         df = pd.DataFrame({'Channel': ch_names, 'Attribution': coefs})
         ax = df.plot.bar(x='Channel', y='Attribution', rot=90)
         plt.tight_layout()
@@ -57,20 +55,9 @@ class LR:
 
     def get_normalized_attributions(self):
         coefs = self.get_coefs()
-        minimum = coefs.min()
-        if minimum < 0:
-            coefs += abs(minimum)
+        coefs[coefs < 0] = 0
         channel_attributions = coefs/coefs.sum()
         return channel_attributions.tolist()
-
-    def get_GA_df(self):
-        return self.data_loader.get_GA_df()
-
-    def get_converted_clients_df(self):
-        return self.data_loader.get_converted_clients_df()
-
-    def get_ch_to_idx_map(self):
-        return self.data_loader.get_ch_to_idx_map()
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
@@ -78,14 +65,18 @@ if __name__ == '__main__':
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-17.csv'
     start_date = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
-    train_proportion = 0.7
+    train_proportion = 0.8
     nr_top_ch = 10
     ratio_maj_min_class = 1
     use_time = True
 
-    model = LR(start_date, end_date, file_path_mp, nr_top_ch, use_time, train_proportion, ratio_maj_min_class)
+    data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
+    x_train, y_train, x_test, y_test = data_loader.get_feature_matrix_split(train_proportion, use_time)
+
+    model = LR()
+    model.load_train_test_data(x_train, y_train, x_test, y_test)
     model.train()
     model.validate()
-    model.plot_attributions()
+    model.plot_attributions(data_loader.get_idx_to_ch_map())
