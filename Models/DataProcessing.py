@@ -118,10 +118,12 @@ class ApiDataGA:
 
 
 class DataProcessing:
-    def __init__(self, start_date, end_date, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None,
+    def __init__(self, start_date_window, end_date_window, start_date_session_filter, end_date_session_filter, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None,
                  nr_top_ch=10000, ratio_maj_min_class=None):
-        self.start_date = start_date
-        self.end_date = end_date
+        self.start_date_window = start_date_window
+        self.end_date_window = end_date_window
+        self.start_date_session_filter = start_date_session_filter
+        self.end_date_session_filter = end_date_session_filter
         self.nr_top_ch = nr_top_ch
         self.ratio_maj_min_class = ratio_maj_min_class
         self.GA_df = None
@@ -135,7 +137,7 @@ class DataProcessing:
 
 
     def process_individual_data(self):
-        GA_api = ApiDataGA(self.start_date, self.end_date)
+        GA_api = ApiDataGA(self.start_date_window, self.end_date_window)
         GA_api.initialize_api()
         GA_api_df = GA_api.get_GA_df()
         GA_api_df = GA_api_df.rename(columns={'dimension6': 'client_id',
@@ -163,7 +165,12 @@ class DataProcessing:
             return
         self.GA_df = self.GA_df.groupby('source_medium').filter(lambda source: len(source) >= source_counts[self.nr_top_ch-1])
 
-    def remove_duplicate_sessions(self):
+    def filter_time_window(self):
+        focus_sessions_df = self.GA_df.loc[(self.GA_df['timestamp'] >= self.start_date_session_filter) &
+                                            (self.GA_df['timestamp'] <= self.end_date_session_filter)]
+        self.GA_df = self.GA_df[self.GA_df['client_id'].isin(focus_sessions_df['client_id'])]
+
+    def drop_duplicate_sessions(self):
         self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
         self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
 
@@ -240,8 +247,8 @@ class DataProcessing:
         df['termination_date'] = pd.to_datetime(df['termination_date'], errors='coerce').dt.tz_localize('Europe/Oslo',
                                                                                                         ambiguous=False)
 
-        df = df.loc[(df['signup_time'] >= self.start_date) &
-                    (df['signup_time'] <= self.end_date)]
+        df = df.loc[(df['signup_time'] >= self.start_date_window) &
+                    (df['signup_time'] <= self.end_date_window)]
         df = df.loc[df['market'] == market]
 
         if convert_to_float:
@@ -328,7 +335,7 @@ class DataProcessing:
                 self.GA_df.loc[cust_id, 'cost'] = marketing_spend_series.iloc[0]['cpc']
 
     def process_bq_funnel(self):
-        bq_processor = ApiDataBigQuery(self.start_date, self.end_date)
+        bq_processor = ApiDataBigQuery(self.start_date_window, self.end_date_window)
         self.funnel_df = bq_processor.get_funnel_df()
 
     def save_to_csv(self):
@@ -355,7 +362,8 @@ class DataProcessing:
     def process_all(self):
         self.process_bq_funnel()
         self.process_individual_data()
-        self.remove_duplicate_sessions()
+        self.filter_time_window()
+        self.drop_duplicate_sessions()
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
@@ -373,9 +381,13 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', None)
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
-    start_date = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
+    start_date_window = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
+    end_date_window = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
 
-    data_processing = DataProcessing(start_date, end_date, file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1)
+    start_date_session_filter = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
+    end_date_session_filter = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
+
+    data_processing = DataProcessing(start_date_window, end_date_window, start_date_session_filter, end_date_session_filter,
+                                     file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1)
     data_processing.process_all()
     GA_df = data_processing.get_GA_df()
