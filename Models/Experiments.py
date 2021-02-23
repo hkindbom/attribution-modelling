@@ -8,8 +8,10 @@ from LR import LR
 
 class Experiments:
 
-    def __init__(self, start_date, end_date, file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class, use_time):
-        self.data_loader = ModelDataLoader(start_date, end_date, file_path_mp, nr_top_ch, ratio_maj_min_class)
+    def __init__(self, start_date_data, end_date_data, start_date_cohort, end_date_cohort,
+                 file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class, use_time):
+        self.data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
+                                           file_path_mp, nr_top_ch, ratio_maj_min_class)
         self.use_time = use_time
         self.SP_model = SP()
         self.LTA_model = LTA()
@@ -99,17 +101,21 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-17.csv'
-    start_date = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
+    file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
+    start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
+
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=2, day=9, hour=23, minute=59, tz='UTC')
 
     train_proportion = 0.7
     nr_top_ch = 10
-    ratio_maj_min_class = 6
+    ratio_maj_min_class = 1
     use_time = True
     total_budget = 1000
 
-    experiments = Experiments(start_date, end_date, file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time)
+    experiments = Experiments(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
+                              file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time)
     experiments.load_data()
     experiments.train_all()
     experiments.load_attributions()

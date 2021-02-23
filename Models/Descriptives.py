@@ -6,10 +6,14 @@ from DataProcessing import DataProcessing
 
 
 class Descriptives:
-    def __init__(self, start_date, end_date, file_path_mp=None, nr_top_ch=10000):
-        self.start_date = start_date
-        self.end_date = end_date
-        self.data_processing = DataProcessing(self.start_date, self.end_date, file_path_mp, nr_top_ch=nr_top_ch)
+    def __init__(self, start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp=None,
+                 nr_top_ch=10000):
+        self.start_date_data = start_date_data
+        self.end_date_data = end_date_data
+        self.start_date_cohort = start_date_cohort
+        self.end_date_cohort = end_date_cohort
+        self.data_processing = DataProcessing(self.start_date_data, self.end_date_data, start_date_cohort,
+                                              end_date_cohort, file_path_mp, nr_top_ch=nr_top_ch)
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
@@ -102,8 +106,8 @@ class Descriptives:
         plt.tight_layout()
         plt.ylabel('%')
         plt.title(f"Spend % vs occurrences % in conversion paths during "
-                  f"{self.start_date.year}-{self.start_date.month}-{self.start_date.day} to "
-                  f"{self.end_date.year}-{self.end_date.month}-{self.end_date.day}")
+                  f"{self.start_date_cohort.year}-{self.start_date_cohort.month}-{self.start_date_cohort.day} to "
+                  f"{self.end_date_data.year}-{self.end_date_data.month}-{self.end_date_data.day}")
         plt.show()
 
     def plot_age_dist_MP(self):
@@ -202,10 +206,13 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', None)
     pd.options.display.width = 0
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
-    start_date = pd.Timestamp(year=2021, month=2, day=1, hour=0, minute=0, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=10, hour=23, minute=59, tz='UTC')
+    file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
+    start_date_data = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
+
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
     nr_top_ch = 15
 
-    descriptives = Descriptives(start_date, end_date, file_path_mp, nr_top_ch)
-    descriptives.show_interesting_results_GA()
+    descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
+    descriptives.show_interesting_results_combined()
