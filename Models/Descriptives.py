@@ -11,6 +11,7 @@ class Descriptives:
         self.start_date_data = start_date_data
         self.end_date_data = end_date_data
         self.start_date_cohort = start_date_cohort
+        self.end_date_cohort = end_date_cohort
         self.data_processing = DataProcessing(self.start_date_data, self.end_date_data, start_date_cohort,
                                               end_date_cohort, file_path_mp, nr_top_ch=nr_top_ch)
         self.GA_df = None
