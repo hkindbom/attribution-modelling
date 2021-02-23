@@ -159,21 +159,23 @@ class DataProcessing:
         print('Number of unique sources in GA before filter: ', len(GA_api_df['source'].unique()))
         self.GA_df = GA_api_df
 
-    def drop_uncommon_channels(self):
-        source_counts = self.GA_df['source_medium'].value_counts()
-        if len(source_counts) <= self.nr_top_ch:
-            return
-        self.GA_df = self.GA_df.groupby('source_medium').filter(lambda source: len(source) >= source_counts[self.nr_top_ch-1])
+    def filter_cohort_sessions(self):
+        cohort_sessions_df = self.GA_df.loc[(self.GA_df['timestamp'] >= self.start_date_cohort) &
+                                            (self.GA_df['timestamp'] <= self.end_date_cohort)]
+        pre_cohort_df = self.GA_df.loc[self.GA_df['timestamp'] < self.start_date_cohort]
+        clients_to_keep_df = cohort_sessions_df[~cohort_sessions_df['client_id'].isin(pre_cohort_df['client_id'])]
+
+        self.GA_df = self.GA_df[self.GA_df['client_id'].isin(clients_to_keep_df['client_id'])]
 
     def drop_duplicate_sessions(self):
         self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
         self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
 
-    def filter_cohort_sessions(self):
-        cohort_sessions_df = self.GA_df.loc[(self.GA_df['timestamp'] >= self.start_date_cohort) &
-                                            (self.GA_df['timestamp'] <= self.end_date_cohort)]
-        pre_cohort_df = self.GA_df.loc[self.GA_df['timestamp'] < self.start_date_cohort]
-        self.GA_df = cohort_sessions_df[~cohort_sessions_df['client_id'].isin(pre_cohort_df['client_id'])]
+    def drop_uncommon_channels(self):
+        source_counts = self.GA_df['source_medium'].value_counts()
+        if len(source_counts) <= self.nr_top_ch:
+            return
+        self.GA_df = self.GA_df.groupby('source_medium').filter(lambda source: len(source) >= source_counts[self.nr_top_ch-1])
 
     def balance_classes_GA(self):
         if self.ratio_maj_min_class is None:
@@ -363,8 +365,8 @@ class DataProcessing:
     def process_all(self):
         self.process_bq_funnel()
         self.process_individual_data()
-        self.drop_duplicate_sessions()
         self.filter_cohort_sessions()
+        self.drop_duplicate_sessions()
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
@@ -376,17 +378,16 @@ class DataProcessing:
         self.assign_cost(['organic'])
 
 
-## Temporary, to be deleted:
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
-    start_date_data = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
+    start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
-    start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
-    end_date_cohort = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
     data_processing = DataProcessing(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                                      file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1)

@@ -102,15 +102,15 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', None)
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
-    start_date_data = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
+    start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
 
-    start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
-    end_date_cohort = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=2, day=9, hour=23, minute=59, tz='UTC')
 
     train_proportion = 0.7
     nr_top_ch = 10
-    ratio_maj_min_class = 6
+    ratio_maj_min_class = 1
     use_time = True
     total_budget = 1000
 

@@ -10,6 +10,7 @@ class Descriptives:
                  nr_top_ch=10000):
         self.start_date_data = start_date_data
         self.end_date_data = end_date_data
+        self.start_date_cohort = start_date_cohort
         self.data_processing = DataProcessing(self.start_date_data, self.end_date_data, start_date_cohort,
                                               end_date_cohort, file_path_mp, nr_top_ch=nr_top_ch)
         self.GA_df = None
@@ -104,7 +105,7 @@ class Descriptives:
         plt.tight_layout()
         plt.ylabel('%')
         plt.title(f"Spend % vs occurrences % in conversion paths during "
-                  f"{self.start_date_data.year}-{self.start_date_data.month}-{self.start_date_data.day} to "
+                  f"{self.start_date_cohort.year}-{self.start_date_cohort.month}-{self.start_date_cohort.day} to "
                   f"{self.end_date_data.year}-{self.end_date_data.month}-{self.end_date_data.day}")
         plt.show()
 
@@ -213,4 +214,4 @@ if __name__ == '__main__':
     nr_top_ch = 15
 
     descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
-    descriptives.show_interesting_results_GA()
+    descriptives.show_interesting_results_combined()
