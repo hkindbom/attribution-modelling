@@ -154,16 +154,6 @@ class DataProcessing:
         GA_api_df['conversion_value'] = GA_api_df['conversion_value'].astype(float)
         GA_api_df['sessions'] = GA_api_df['sessions'].astype(int)
 
-        source_rename_dict = {'keep.google.com': 'google',
-                              'mail.google.com': 'google',
-                              'ads.google.com': 'google',
-                              'tagassistant.google.com': 'google',
-                              'youtube': 'google',
-                              'facebook.com': 'facebook',
-                              'm.facebook.com': 'facebook',
-                              'l.facebook.com': 'facebook',
-                              'instagram.com': 'facebook'}
-        GA_api_df = GA_api_df.replace({'source': source_rename_dict})  # Rename source for correct cost allocation
         print('Number of unique sources in GA before filter: ', len(GA_api_df['source'].unique()))
         self.GA_df = GA_api_df
 
