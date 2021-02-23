@@ -118,12 +118,12 @@ class ApiDataGA:
 
 
 class DataProcessing:
-    def __init__(self, start_date_window, end_date_window, start_date_session_filter, end_date_session_filter, file_path_mixpanel=None, file_path_GA_aggregated=None, save_to_path=None,
-                 nr_top_ch=10000, ratio_maj_min_class=None):
-        self.start_date_window = start_date_window
-        self.end_date_window = end_date_window
-        self.start_date_session_filter = start_date_session_filter
-        self.end_date_session_filter = end_date_session_filter
+    def __init__(self, start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mixpanel=None,
+                 file_path_GA_aggregated=None, save_to_path=None, nr_top_ch=10000, ratio_maj_min_class=None):
+        self.start_date_data = start_date_data
+        self.end_date_data = end_date_data
+        self.start_date_cohort = start_date_cohort
+        self.end_date_cohort = end_date_cohort
         self.nr_top_ch = nr_top_ch
         self.ratio_maj_min_class = ratio_maj_min_class
         self.GA_df = None
@@ -137,7 +137,7 @@ class DataProcessing:
 
 
     def process_individual_data(self):
-        GA_api = ApiDataGA(self.start_date_window, self.end_date_window)
+        GA_api = ApiDataGA(self.start_date_data, self.end_date_data)
         GA_api.initialize_api()
         GA_api_df = GA_api.get_GA_df()
         GA_api_df = GA_api_df.rename(columns={'dimension6': 'client_id',
@@ -165,14 +165,17 @@ class DataProcessing:
             return
         self.GA_df = self.GA_df.groupby('source_medium').filter(lambda source: len(source) >= source_counts[self.nr_top_ch-1])
 
-    def filter_time_window(self):
-        focus_sessions_df = self.GA_df.loc[(self.GA_df['timestamp'] >= self.start_date_session_filter) &
-                                            (self.GA_df['timestamp'] <= self.end_date_session_filter)]
-        self.GA_df = self.GA_df[self.GA_df['client_id'].isin(focus_sessions_df['client_id'])]
-
     def drop_duplicate_sessions(self):
         self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
         self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
+
+    def filter_cohort_sessions(self):
+        cohort_sessions_df = self.GA_df.loc[(self.GA_df['timestamp'] >= self.start_date_cohort) &
+                                            (self.GA_df['timestamp'] <= self.end_date_cohort)]
+        pre_cohort_df = self.GA_df.loc[self.GA_df['timestamp'] < self.start_date_cohort]
+        clients_to_remove_df = cohort_sessions_df[cohort_sessions_df['client_id'].isin(pre_cohort_df['client_id'])]
+
+        self.GA_df = cohort_sessions_df[~cohort_sessions_df['client_id'].isin(clients_to_remove_df['client_id'])]
 
     def balance_classes_GA(self):
         if self.ratio_maj_min_class is None:
@@ -247,8 +250,8 @@ class DataProcessing:
         df['termination_date'] = pd.to_datetime(df['termination_date'], errors='coerce').dt.tz_localize('Europe/Oslo',
                                                                                                         ambiguous=False)
 
-        df = df.loc[(df['signup_time'] >= self.start_date_window) &
-                    (df['signup_time'] <= self.end_date_window)]
+        df = df.loc[(df['signup_time'] >= self.start_date_data) &
+                    (df['signup_time'] <= self.end_date_data)]
         df = df.loc[df['market'] == market]
 
         if convert_to_float:
@@ -335,7 +338,7 @@ class DataProcessing:
                 self.GA_df.loc[cust_id, 'cost'] = marketing_spend_series.iloc[0]['cpc']
 
     def process_bq_funnel(self):
-        bq_processor = ApiDataBigQuery(self.start_date_window, self.end_date_window)
+        bq_processor = ApiDataBigQuery(self.start_date_data, self.end_date_data)
         self.funnel_df = bq_processor.get_funnel_df()
 
     def save_to_csv(self):
@@ -362,8 +365,8 @@ class DataProcessing:
     def process_all(self):
         self.process_bq_funnel()
         self.process_individual_data()
-        self.filter_time_window()
         self.drop_duplicate_sessions()
+        self.filter_cohort_sessions()
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
@@ -381,13 +384,13 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', None)
 
     file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
-    start_date_window = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
-    end_date_window = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
+    start_date_data = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
 
-    start_date_session_filter = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
-    end_date_session_filter = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
 
-    data_processing = DataProcessing(start_date_window, end_date_window, start_date_session_filter, end_date_session_filter,
+    data_processing = DataProcessing(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                                      file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1)
     data_processing.process_all()
     GA_df = data_processing.get_GA_df()
