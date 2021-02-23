@@ -9,10 +9,11 @@ from LR import LR
 class Experiments:
 
     def __init__(self, start_date_data, end_date_data, start_date_cohort, end_date_cohort,
-                 file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class, use_time):
+                 file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class, use_time, simulate, cohort_size, sim_time):
         self.data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
-                                           file_path_mp, nr_top_ch, ratio_maj_min_class)
+                                           file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size, sim_time)
         self.use_time = use_time
+        self.simulate = simulate
         self.SP_model = SP()
         self.LTA_model = LTA()
         self.LR_model = LR()
@@ -70,7 +71,7 @@ class Experiments:
 
     def plot_attributions(self):
         channel_names = []
-        for ch_idx in range(self.nr_top_ch):
+        for ch_idx in range(len(self.idx_to_ch)):
             channel_names.append(self.idx_to_ch[ch_idx])
 
         df = pd.DataFrame({'Channel': channel_names,
@@ -85,6 +86,9 @@ class Experiments:
         plt.show()
 
     def profit_eval(self, total_budget):
+        if self.simulate:
+            print('Can\'t run eval FW with simulated data')
+            return
         GA_df = self.data_loader.get_GA_df()
         converted_clients_df = self.data_loader.get_converted_clients_df()
 
@@ -114,8 +118,13 @@ if __name__ == '__main__':
     use_time = True
     total_budget = 1000
 
+    simulate = True
+    cohort_size = 1000
+    sim_time = 100
+
     experiments = Experiments(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
-                              file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time)
+                              file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
+                              simulate, cohort_size, sim_time)
     experiments.load_data()
     experiments.train_all()
     experiments.load_attributions()

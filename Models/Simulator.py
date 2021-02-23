@@ -53,7 +53,6 @@ class Simulator:
         self.init_simulator()
 
     def run_simulation(self):
-        print('Running simulation')
         while self.current_time < self.sim_time and self.nr_conversions < self.cohort_size:
             next_event = heapq.heappop(self.events)
             event_time = next_event[0]
@@ -62,6 +61,8 @@ class Simulator:
             self.current_time = event_time
             self.handle_event(event_ch, event_person_id)
             self.create_new_event(event_ch, event_person_id)
+        print('Simulation done')
+
 
     def get_data_dict_format(self):
         persons_dict = {}
@@ -121,19 +122,28 @@ class Simulator:
     def get_exposure_time(self, intensity):
         return self.current_time + np.random.exponential(1/intensity)
 
+    def get_ch_idx_maps(self):
+        ch_to_idx = {}
+        idx_to_ch = {}
+        for channel in self.channels:
+            ch_to_idx[channel.name] = channel.index
+            idx_to_ch[channel.index] = channel.name
+        return ch_to_idx, idx_to_ch
+
     def create_channels(self):
-        # Channel args: index, name, cpc, click_prob_inc, conv_prob_inc, exposure_intensity
-        self.channels.append(Channel(0, 'fb', 10, 0.01, 0.04, 0.2))
-        self.channels.append(Channel(1, 'google', 15, 0.015, 0.04, 0.3))
+        self.channels.append(Channel(0, 'fb', 10, 0.2, 0.1, 0.2))
+        self.channels.append(Channel(1, 'google', 15, 0.0, 0.0, 0.3))
         self.ch_interact = [[1, 1.1],
                             [1.05, 1]]
 
 if __name__ == '__main__':
     cohort_size = 10
-    sim_time = 400
+    sim_time = 100
 
     sim = Simulator(cohort_size, sim_time)
     sim.run_simulation()
     sim.show_results()
     data_dict = sim.get_data_dict_format()
+    print(sim.get_ch_idx_maps())
+    print(data_dict)
 
