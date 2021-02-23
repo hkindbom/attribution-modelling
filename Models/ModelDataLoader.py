@@ -4,9 +4,10 @@ import numpy as np
 import random
 
 class ModelDataLoader:
-    def __init__(self, start_time, end_date, file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1):
-        self.data_processing = DataProcessing(start_time, end_date, file_path_mp,
-                                              nr_top_ch=nr_top_ch,
+    def __init__(self, start_date_data, end_date_data, start_data_cohort, end_data_cohort,
+                 file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1):
+        self.data_processing = DataProcessing(start_date_data, end_date_data, start_data_cohort,
+                                              end_data_cohort, file_path_mp, nr_top_ch=nr_top_ch,
                                               ratio_maj_min_class=ratio_maj_min_class)
         self.GA_df = None
         self.converted_clients_df = None
@@ -129,8 +130,12 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-11.csv'
-    start_date = pd.Timestamp(year=2021, month=2, day=1, tz='UTC')
-    end_date = pd.Timestamp(year=2021, month=2, day=11, tz='UTC')
-    processor = ModelDataLoader(start_date, end_date, file_path_mp)
+    file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
+    start_date_data = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
+
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
+
+    processor = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp)
     processor.get_feature_matrix_split(0.8)
