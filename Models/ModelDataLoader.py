@@ -4,8 +4,8 @@ import numpy as np
 import random
 
 class ModelDataLoader:
-    def __init__(self, start_time, end_date, file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1):
-        self.data_processing = DataProcessing(start_time, end_date, file_path_mp,
+    def __init__(self, start_date, end_date, file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1):
+        self.data_processing = DataProcessing(start_date, end_date, file_path_mp,
                                               nr_top_ch=nr_top_ch,
                                               ratio_maj_min_class=ratio_maj_min_class)
         self.GA_df = None

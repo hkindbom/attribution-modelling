@@ -163,6 +163,10 @@ class DataProcessing:
             return
         self.GA_df = self.GA_df.groupby('source_medium').filter(lambda source: len(source) >= source_counts[self.nr_top_ch-1])
 
+    def remove_duplicate_sessions(self):
+        self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
+        self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
+
     def balance_classes_GA(self):
         if self.ratio_maj_min_class is None:
             return
@@ -175,7 +179,6 @@ class DataProcessing:
                                              str(major_label)).sample(round(class_counts[1] * self.ratio_maj_min_class))
         GA_minority = GA_temp[GA_temp['converted_eventually'] == minor_label]
         self.GA_df = GA_minority.append(GA_major_downsampled).sort_index()
-
 
     def group_by_client_id(self):
         df = self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
@@ -352,6 +355,7 @@ class DataProcessing:
     def process_all(self):
         self.process_bq_funnel()
         self.process_individual_data()
+        self.remove_duplicate_sessions()
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
@@ -361,3 +365,17 @@ class DataProcessing:
         self.create_converted_clients_df()
         self.estimate_client_LTV()
         self.assign_cost(['organic'])
+
+
+## Temporary, to be deleted:
+if __name__ == '__main__':
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.max_rows', None)
+
+    file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
+    start_date = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
+    end_date = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
+
+    data_processing = DataProcessing(start_date, end_date, file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1)
+    data_processing.process_all()
+    GA_df = data_processing.get_GA_df()
