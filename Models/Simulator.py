@@ -144,6 +144,4 @@ if __name__ == '__main__':
     sim.run_simulation()
     sim.show_results()
     data_dict = sim.get_data_dict_format()
-    print(sim.get_ch_idx_maps())
-    print(data_dict)
 

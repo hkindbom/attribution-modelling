@@ -87,7 +87,7 @@ class Experiments:
 
     def profit_eval(self, total_budget):
         if self.simulate:
-            print('Can\'t run eval FW with simulated data')
+            print('Oops... Can\'t run eval FW with simulated data')
             return
         GA_df = self.data_loader.get_GA_df()
         converted_clients_df = self.data_loader.get_converted_clients_df()

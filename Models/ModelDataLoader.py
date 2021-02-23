@@ -22,12 +22,17 @@ class ModelDataLoader:
 
     def load_data(self):
         if self.simulate:
-            sim = Simulator(self.cohort_size, self.sim_time)
-            sim.run_simulation()
-            self.clients_dict = sim.get_data_dict_format()
-            self.ch_to_idx, self.idx_to_ch = sim.get_ch_idx_maps()
+            self.load_sim_data()
             return
+        self.load_real_data()
 
+    def load_sim_data(self):
+        sim = Simulator(self.cohort_size, self.sim_time)
+        sim.run_simulation()
+        self.clients_dict = sim.get_data_dict_format()
+        self.ch_to_idx, self.idx_to_ch = sim.get_ch_idx_maps()
+
+    def load_real_data(self):
         self.data_processing.process_all()
         self.GA_df = self.data_processing.get_GA_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
