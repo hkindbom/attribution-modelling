@@ -173,9 +173,7 @@ class DataProcessing:
         cohort_sessions_df = self.GA_df.loc[(self.GA_df['timestamp'] >= self.start_date_cohort) &
                                             (self.GA_df['timestamp'] <= self.end_date_cohort)]
         pre_cohort_df = self.GA_df.loc[self.GA_df['timestamp'] < self.start_date_cohort]
-        clients_to_remove_df = cohort_sessions_df[cohort_sessions_df['client_id'].isin(pre_cohort_df['client_id'])]
-
-        self.GA_df = cohort_sessions_df[~cohort_sessions_df['client_id'].isin(clients_to_remove_df['client_id'])]
+        self.GA_df = cohort_sessions_df[~cohort_sessions_df['client_id'].isin(pre_cohort_df['client_id'])]
 
     def balance_classes_GA(self):
         if self.ratio_maj_min_class is None:
