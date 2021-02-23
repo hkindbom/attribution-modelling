@@ -37,8 +37,8 @@ class Channel:
 class Person:
     def __init__(self, id):
         self.id = id
-        self.click_prob = 0.1
-        self.conv_prob = 0.2
+        self.click_prob = 0.4
+        self.conv_prob = 0.8
         self.seen_channels = []
         self.clicked_channels = []
         self.converted = False
@@ -54,7 +54,7 @@ class Simulator:
         self.current_time = 0
         self.sim_time = sim_time
         self.create_channels()
-        self.create_events()
+        self.init_persons_and_events()
 
     def run_simulation(self):
         print('Running simulation')
@@ -67,23 +67,49 @@ class Simulator:
             self.handle_event(event_ch, event_person_id)
 
             if len(self.events) == 0:
-                self.create_events()
+                self.create_new_events()
+
+        for person in self.persons:
+            print(person.id)
+            print(person.converted)
+
 
     def handle_event(self, channel, person_id):
-        pass
+        person = self.persons[person_id]
+        if person.converted:
+            return
+        self.persons[person_id] = self.get_updated_person(channel, person)
 
+    def get_updated_person(self, channel, person):
+        person.seen_channels.append(channel)
+        clicked_ch = np.random.choice([True, False], p=[person.click_prob, 1 - person.click_prob])
+        if clicked_ch:
+            self.tot_spend += channel.cpc
+            person.clicked_channels.append(channel)
+            converted = np.random.choice([True, False], p=[person.conv_prob, 1 - person.conv_prob])
+            if converted:
+                person.converted = True
+        return person
 
     def create_channels(self):
         self.channels.append(Channel('fb', 10, 0.2, 0.1, 0.1))
         self.channels.append(Channel('google', 15, 0.3, 0.2, 0.4))
 
-    def create_events(self):
+    def create_new_events(self):
+        for person_idx in range(self.population_size):
+            if not self.persons[person_idx].converted:
+                self.add_channel_events(person_idx)
+
+    def init_persons_and_events(self):
         for person_idx in range(self.population_size):
             person = Person(person_idx)
             self.persons.append(person)
-            for channel in self.channels:
-                exposure_time = self.get_exposure_time(channel.exposure_intensity)
-                heapq.heappush(self.events, (exposure_time, channel, person.id))
+            self.add_channel_events(person.id)
+
+    def add_channel_events(self, person_idx):
+        for channel in self.channels:
+            exposure_time = self.get_exposure_time(channel.exposure_intensity)
+            heapq.heappush(self.events, (exposure_time, channel, person_idx))
 
     def get_exposure_time(self, intensity):
         return self.current_time + np.random.exponential(1/intensity)
@@ -91,7 +117,7 @@ class Simulator:
 
 if __name__ == '__main__':
     population_size = 10
-    sim_time = 25
+    sim_time = 10
     sim = Simulator(population_size, sim_time)
     sim.run_simulation()
 
