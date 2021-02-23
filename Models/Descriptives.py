@@ -132,12 +132,12 @@ class Descriptives:
         user_data_per_channel = []
         for channel, _ in channels.iteritems():
             client_indexes = conversion_paths_not_last_df.loc[
-                conversion_paths_not_last_df['source_medium'] == channel].id
+                conversion_paths_not_last_df['source_medium'] == channel].index
             client_ids = [client_id[0] for client_id in client_indexes]
             user_data = self.converted_clients_df[self.converted_clients_df['client_id'].isin(client_ids)][user_feature]
             user_data_per_channel.append(user_data)
 
-        labels = list(channels.id)
+        labels = list(channels.index)
         plt.hist(user_data_per_channel, bins=5, density=False, label=labels)
         plt.legend()
         plt.title(user_feature.capitalize() + ' per non-last conversion channel')
@@ -152,7 +152,7 @@ class Descriptives:
         channel_idx = 0
         for channel, _ in channels.iteritems():
             client_indexes = conversion_paths_not_last_df.loc[
-                conversion_paths_not_last_df['source_medium'] == channel].id
+                conversion_paths_not_last_df['source_medium'] == channel].index
             client_ids = [client_id[0] for client_id in client_indexes]
             user_data = self.converted_clients_df[self.converted_clients_df['client_id'].isin(client_ids)][column]
             x_plot = np.linspace(min(user_data) - 3 * bandwidth, max(user_data) + 3 * bandwidth, 1000)[:, np.newaxis]

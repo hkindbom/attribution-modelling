@@ -178,8 +178,8 @@ class DataProcessing:
             return
         GA_temp = self.GA_df
         class_counts = GA_temp['conversion'].value_counts()
-        major_label = class_counts.id.tolist()[0]
-        minor_label = class_counts.id.tolist()[1]
+        major_label = class_counts.index.tolist()[0]
+        minor_label = class_counts.index.tolist()[1]
 
         GA_major_downsampled = GA_temp.query('converted_eventually == ' +
                                              str(major_label)).sample(round(class_counts[1] * self.ratio_maj_min_class))
