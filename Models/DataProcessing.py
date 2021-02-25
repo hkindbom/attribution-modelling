@@ -36,7 +36,7 @@ class ApiDataBigQuery:
                                  f"{calendar.monthrange(month_period.year, month_period.month)[1]}"
 
             query_string = f"SELECT Date, Traffic_source, Data_Source_type, Cost, Clicks, Impressions \
-                           FROM funnel-integration.Marketing_Spend.marketing_spend_monthly_{month_period.year}_{str(month_period.month).zfill(2)} \
+                           FROM funnel-248216.marketing_spend.marketing_spend_monthly_{month_period.year}_{str(month_period.month).zfill(2)} \
                            WHERE Date >= DATE ({query_start_date}) \
                            AND Date <= DATE ({query_end_date}) \
                            AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"

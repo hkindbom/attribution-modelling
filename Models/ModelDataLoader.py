@@ -1,11 +1,12 @@
 import pandas as pd
 from DataProcessing import DataProcessing
+from Simulator import Simulator
 import numpy as np
 import random
 
 class ModelDataLoader:
     def __init__(self, start_date_data, end_date_data, start_data_cohort, end_data_cohort,
-                 file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1):
+                 file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1, simulate=False, cohort_size=100, sim_time=100):
         self.data_processing = DataProcessing(start_date_data, end_date_data, start_data_cohort,
                                               end_data_cohort, file_path_mp, nr_top_ch=nr_top_ch,
                                               ratio_maj_min_class=ratio_maj_min_class)
@@ -14,13 +15,28 @@ class ModelDataLoader:
         self.clients_dict = {}
         self.ch_to_idx = {}
         self.idx_to_ch = {}
-        self.read_data()
-        self.create_clients_dict()
+        self.simulate = simulate
+        self.cohort_size = cohort_size
+        self.sim_time = sim_time
+        self.load_data()
 
-    def read_data(self):
+    def load_data(self):
+        if self.simulate:
+            self.load_sim_data()
+            return
+        self.load_real_data()
+
+    def load_sim_data(self):
+        sim = Simulator(self.cohort_size, self.sim_time)
+        sim.run_simulation()
+        self.clients_dict = sim.get_data_dict_format()
+        self.ch_to_idx, self.idx_to_ch = sim.get_ch_idx_maps()
+
+    def load_real_data(self):
         self.data_processing.process_all()
         self.GA_df = self.data_processing.get_GA_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
+        self.create_clients_dict()
 
     def create_clients_dict(self, use_LTV=False):
         GA_temp = self.GA_df
@@ -78,7 +94,6 @@ class ModelDataLoader:
                 pass
             else:
                 labels[idx] = label
-
             feature_matrix[idx, self.clients_dict[client_id]['session_channels']] = 1
             if use_time:
                 times = np.array(self.clients_dict[client_id]['session_times'])
@@ -137,5 +152,6 @@ if __name__ == '__main__':
     start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
     end_date_cohort = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
 
-    processor = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp)
+    processor = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp,
+                                simulate=True)
     processor.get_feature_matrix_split(0.8)
