@@ -131,7 +131,7 @@ class Simulator:
         return ch_to_idx, idx_to_ch
 
     def create_channels(self):
-        self.channels.append(Channel(0, 'fb', 10, 0.2, 0.1, 0.2))
+        self.channels.append(Channel(0, 'fb', 10, 0.2, 0.4, 0.2))
         self.channels.append(Channel(1, 'google', 15, 0.0, 0.0, 0.3))
         self.ch_interact = [[1, 1.1],
                             [1.05, 1]]
