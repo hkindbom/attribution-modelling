@@ -3,12 +3,11 @@ from tensorflow import keras
 from attention import Attention
 import numpy as np
 import pandas as pd
+from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
 from ModelDataLoader import ModelDataLoader
 
 import sys
 np.set_printoptions(threshold=sys.maxsize)
-
-# https://stackabuse.com/solving-sequence-problems-with-lstm-in-keras/
 
 class LSTM:
 
@@ -20,6 +19,8 @@ class LSTM:
         self.nr_features = None
         self.x_train = None
         self.y_train = None
+        self.x_test = None
+        self.y_test = None
 
     def setup_model(self):
         self.model = tf.keras.Sequential()
@@ -33,22 +34,38 @@ class LSTM:
                            optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-07),
                            metrics=[keras.metrics.Recall(), keras.metrics.Precision(), 'accuracy'])
 
-    def load_data(self, x_train, y_train):
+    def load_data(self, x_train, y_train, x_test, y_test):
         # sequences will be padded to the length of the longest individual sequence
-        padded_data = keras.preprocessing.sequence.pad_sequences(x_train, value=-1, padding='post')
-        self.max_seq_len = padded_data.shape[1]
-        self.nr_features = len(np.unique(padded_data)) - 1
-        self.x_train = self.one_hot_encode_x(padded_data)
+        padded_x_train = self.pad_x(x_train)
+        self.max_seq_len = padded_x_train.shape[1]
+        self.nr_features = len(np.unique(padded_x_train)) - 1
+
+        self.x_train = self.one_hot_encode_x(padded_x_train)
         self.y_train = np.array(y_train)
+
+        padded_x_test = self.pad_x(x_test, self.max_seq_len)
+        self.x_test = self.one_hot_encode_x(padded_x_test)
+        self.y_test = np.array(y_test)
+
+        self.setup_model()
 
     def train(self):
         history = self.model.fit(self.x_train, self.y_train, epochs=self.epochs, batch_size=self.batch_size,
                                  validation_split=0.2, verbose=1)
 
-    def get_preds(self, x):
-        padded_x = keras.preprocessing.sequence.pad_sequences(x, maxlen=self.max_seq_len, value=-1, padding='post')
-        one_hot_x = self.one_hot_encode_x(padded_x)
+    def get_preds(self, one_hot_x):
         return self.model.predict(one_hot_x, verbose=0)
+
+    def get_results(self):
+        preds = np.round(self.get_preds(self.x_test))
+        tn, fp, fn, tp = confusion_matrix(self.y_test, preds).ravel()
+        auc = roc_auc_score(self.y_test, preds)
+        logloss = log_loss(self.y_test, preds)
+
+        return {'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp, 'auc': auc, 'logloss': logloss}
+
+    def pad_x(self, x, maxlen=None):
+        return keras.preprocessing.sequence.pad_sequences(x, maxlen=maxlen, value=-1, padding='post')
 
     def one_hot_encode_x(self, padded_data):
         return tf.one_hot(padded_data, self.nr_features, on_value=1, off_value=0, axis=-1)
@@ -60,14 +77,14 @@ if __name__ == '__main__':
 
     file_path_mp = '../Data/Mixpanel_data_2021-03-01.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=2, day=28, hour=23, minute=59, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
 
     start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
-    end_date_cohort = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
 
     nr_top_ch = 10
     ratio_maj_min_class = 1
-    train_prop = 0.99
+    train_prop = 0.8
     simulate = False
     cohort_size = 1000
     sim_time = 200
@@ -79,15 +96,14 @@ if __name__ == '__main__':
 
     x_train, y_train, x_test, y_test = data_loader.get_seq_lists_split(train_prop)
 
-    epochs = 10
+    epochs = 20
     batch_size = 20
     learning_rate = 0.001
 
     lstm = LSTM(epochs, batch_size, learning_rate)
-    lstm.load_data(x_train, y_train)
-    lstm.setup_model()
+    lstm.load_data(x_train, y_train, x_test, y_test)
     lstm.train()
+    print(lstm.get_results())
 
-    #print(np.c_[np.array(x_all), lstm.get_preds(x_all), np.array(y_all)])
     print('% conversions train', sum(y_train)/len(y_train))
     print('nr samples train: ', len(y_train))
