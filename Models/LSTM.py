@@ -105,5 +105,3 @@ if __name__ == '__main__':
     lstm.train()
     print(lstm.get_results())
 
-    print('% conversions train', sum(y_train)/len(y_train))
-    print('nr samples train: ', len(y_train))
