@@ -11,10 +11,11 @@ np.set_printoptions(threshold=sys.maxsize)
 
 class LSTM:
 
-    def __init__(self, epochs, batch_size, learning_rate):
+    def __init__(self, epochs, batch_size, learning_rate, validation_split=0.0):
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
+        self.validation_split = validation_split
         self.max_seq_len = None
         self.nr_features = None
         self.x_train = None
@@ -51,7 +52,7 @@ class LSTM:
 
     def train(self):
         history = self.model.fit(self.x_train, self.y_train, epochs=self.epochs, batch_size=self.batch_size,
-                                 validation_split=0.2, verbose=1)
+                                 validation_split=self.validation_split, verbose=1)
 
     def get_preds(self, one_hot_x):
         return self.model.predict(one_hot_x, verbose=0)
@@ -60,9 +61,8 @@ class LSTM:
         preds = np.round(self.get_preds(self.x_test))
         tn, fp, fn, tp = confusion_matrix(self.y_test, preds).ravel()
         auc = roc_auc_score(self.y_test, preds)
-        logloss = log_loss(self.y_test, preds)
 
-        return {'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp, 'auc': auc, 'logloss': logloss}
+        return {'tn': tn, 'fp': fp, 'fn': fn, 'tp': tp, 'auc': auc, 'logloss': np.nan}
 
     def pad_x(self, x, maxlen=None):
         return keras.preprocessing.sequence.pad_sequences(x, maxlen=maxlen, value=-1, padding='post')
@@ -99,8 +99,9 @@ if __name__ == '__main__':
     epochs = 20
     batch_size = 20
     learning_rate = 0.001
+    validation_split = 0.2
 
-    lstm = LSTM(epochs, batch_size, learning_rate)
+    lstm = LSTM(epochs, batch_size, learning_rate, validation_split)
     lstm.load_data(x_train, y_train, x_test, y_test)
     lstm.train()
     print(lstm.get_results())
