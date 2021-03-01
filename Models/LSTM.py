@@ -67,18 +67,16 @@ if __name__ == '__main__':
 
     nr_top_ch = 10
     ratio_maj_min_class = 1
-    simulate = False
+    simulate = True
     cohort_size = 1000
     sim_time = 200
 
     data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp,
                                  nr_top_ch, ratio_maj_min_class, simulate, cohort_size, sim_time)
 
+    print('Theoretical max accuracy is: ', data_loader.get_theo_max_accuracy())
+
     x_all, y_all = data_loader.get_all_seq_lists_and_labels()
-    #x_all = [[0, 1, 1, 3, 1], [0, 2, 1]]
-    #y_all = [1, 0]
-    #print(x_all)
-    #print(y_all)
 
     epochs = 20
     batch_size = 20
