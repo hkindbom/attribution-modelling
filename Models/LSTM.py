@@ -5,44 +5,50 @@ import numpy as np
 import pandas as pd
 from ModelDataLoader import ModelDataLoader
 
-#import sys
-#np.set_printoptions(threshold=sys.maxsize)
+import sys
+np.set_printoptions(threshold=sys.maxsize)
 
 # https://stackabuse.com/solving-sequence-problems-with-lstm-in-keras/
 
 class LSTM:
 
-    def __init__(self, epochs, batch_size):
+    def __init__(self, epochs, batch_size, learning_rate):
         self.epochs = epochs
         self.batch_size = batch_size
+        self.learning_rate = learning_rate
         self.max_seq_len = None
         self.x_train = None
         self.y_train = None
 
     def setup_model(self):
         self.model = tf.keras.Sequential()
-        self.model.add(keras.layers.LSTM(units=64, input_shape=(self.x_train.shape[1], 1)))
+        self.model.add(tf.keras.layers.Masking(mask_value=-1, input_shape=(self.x_train.shape[1], 1)))
+        self.model.add(keras.layers.LSTM(units=32))
         #self.model.add(Attention())
         self.model.add(keras.layers.Dense(units=64, activation='relu'))
         self.model.add(keras.layers.Dense(units=1, activation='sigmoid'))
 
         self.model.compile(loss=keras.losses.BinaryCrossentropy(from_logits=True),
-                           optimizer=tf.keras.optimizers.Adam(1e-4),
+                           optimizer=tf.keras.optimizers.Adam(learning_rate=self.learning_rate, beta_1=0.9, beta_2=0.999, epsilon=1e-07),
                            metrics=[keras.metrics.Recall(), keras.metrics.Precision(), 'accuracy'])
 
     def load_data(self, x_train, y_train):
         # sequences will be padded to the length of the longest individual sequence
-        padded_data = keras.preprocessing.sequence.pad_sequences(x_train)
+        padded_data = keras.preprocessing.sequence.pad_sequences(x_train, value=-1)
         self.max_seq_len = padded_data.shape[1]
+        #print(self.max_seq_len)
+        #print(padded_data)
         self.x_train = padded_data.reshape(padded_data.shape[0], self.max_seq_len, 1)
         self.y_train = np.array(y_train)
+        #print(self.x_train)
+        #print(self.y_train)
 
     def train(self):
         history = self.model.fit(self.x_train, self.y_train, epochs=self.epochs, batch_size=self.batch_size,
                                  validation_split=0.2, verbose=1)
 
     def get_preds(self, x):
-        padded_x = keras.preprocessing.sequence.pad_sequences(x, maxlen=self.max_seq_len).reshape(len(x), self.max_seq_len, 1)
+        padded_x = keras.preprocessing.sequence.pad_sequences(x, maxlen=self.max_seq_len, value=-1).reshape(len(x), self.max_seq_len, 1)
         return self.model.predict(padded_x, verbose=0)
 
 if __name__ == '__main__':
@@ -60,18 +66,23 @@ if __name__ == '__main__':
     ratio_maj_min_class = 1
     min_seq_len = 1 # Note! does overwrite class ratio, just for debugging
     simulate = False
-    cohort_size = 1000
-    sim_time = 100
+    cohort_size = 10000
+    sim_time = 200
 
     data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp,
                                  nr_top_ch, ratio_maj_min_class, simulate, cohort_size, sim_time)
 
     x_all, y_all = data_loader.get_all_seq_lists_and_labels(min_seq_len)
+    #x_all = [[0, 1, 1, 3], [2, 1]]
+    #y_all = [1, 0]
+    #print(x_all)
+    #print(y_all)
 
     epochs = 50
-    batch_size = 20
+    batch_size = 50
+    learning_rate = 0.01
 
-    lstm = LSTM(epochs, batch_size)
+    lstm = LSTM(epochs, batch_size, learning_rate)
     lstm.load_data(x_all, y_all)
     lstm.setup_model()
     lstm.train()
