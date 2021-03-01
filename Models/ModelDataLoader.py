@@ -3,6 +3,7 @@ from DataProcessing import DataProcessing
 from Simulator import Simulator
 import numpy as np
 import random
+from collections import Counter
 
 class ModelDataLoader:
     def __init__(self, start_date_data, end_date_data, start_data_cohort, end_data_cohort,
@@ -81,6 +82,42 @@ class ModelDataLoader:
         if client_id in self.converted_clients_df['client_id'].values:
             return True
         return False
+
+    def get_seq_lists_split(self, train_prop):
+        clients_dict_train, clients_dict_test = self.get_clients_dict_split(train_prop)
+        seq_lists_train, labels_train = self.get_seq_lists(clients_dict_train)
+        seq_lists_test, labels_test = self.get_seq_lists(clients_dict_test)
+        return seq_lists_train, labels_train, seq_lists_test, labels_test
+
+    def get_seq_lists(self, clients_dict):
+        seq_lists = []
+        labels = []
+        for client_id in clients_dict:
+            session_channels = clients_dict[client_id]['session_channels']
+            labels.append(clients_dict[client_id]['label'])
+            seq_lists.append(session_channels)
+        return seq_lists, labels
+
+    def get_theo_max_accuracy(self):
+        counter_pos = Counter()
+        counter_tot = Counter()
+        for client_id in self.clients_dict:
+            session_channels = self.clients_dict[client_id]['session_channels']
+            key = self.get_str_key_from_chs(session_channels)
+            counter_pos[key] += self.clients_dict[client_id]['label']
+            counter_tot[key] += 1
+        return self.calc_theo_acc_max(counter_pos, counter_tot)
+
+    def calc_theo_acc_max(self, counter_pos, counter_tot):
+        nr_errors = 0
+        tot_samples = len(list(counter_tot.elements()))
+        for seq_key in list(counter_tot):
+            nr_errors += min(counter_pos[seq_key], counter_tot[seq_key]-counter_pos[seq_key])
+        return 1-(nr_errors / tot_samples)
+
+    def get_str_key_from_chs(self, channels):
+        str_channels = [str(ch) for ch in channels]
+        return '_'.join(str_channels)
 
     def get_feature_matrix_split(self, train_prop, use_time=False, use_LTV=False):
         nr_channels = len(self.ch_to_idx)
