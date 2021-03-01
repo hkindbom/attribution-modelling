@@ -83,12 +83,18 @@ class ModelDataLoader:
             return True
         return False
 
-    def get_all_seq_lists_and_labels(self):
+    def get_seq_lists_split(self, train_prop):
+        clients_dict_train, clients_dict_test = self.get_clients_dict_split(train_prop)
+        seq_lists_train, labels_train = self.get_seq_lists(clients_dict_train)
+        seq_lists_test, labels_test = self.get_seq_lists(clients_dict_test)
+        return seq_lists_train, labels_train, seq_lists_test, labels_test
+
+    def get_seq_lists(self, clients_dict):
         seq_lists = []
         labels = []
-        for client_id in self.clients_dict:
-            session_channels = self.clients_dict[client_id]['session_channels']
-            labels.append(self.clients_dict[client_id]['label'])
+        for client_id in clients_dict:
+            session_channels = clients_dict[client_id]['session_channels']
+            labels.append(clients_dict[client_id]['label'])
             seq_lists.append(session_channels)
         return seq_lists, labels
 

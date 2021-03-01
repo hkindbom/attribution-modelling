@@ -67,26 +67,27 @@ if __name__ == '__main__':
 
     nr_top_ch = 10
     ratio_maj_min_class = 1
-    simulate = True
+    train_prop = 0.99
+    simulate = False
     cohort_size = 1000
     sim_time = 200
 
     data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp,
                                  nr_top_ch, ratio_maj_min_class, simulate, cohort_size, sim_time)
 
-    print('Theoretical max accuracy is: ', data_loader.get_theo_max_accuracy())
+    print('Theoretical max accuracy on all data is: ', data_loader.get_theo_max_accuracy())
 
-    x_all, y_all = data_loader.get_all_seq_lists_and_labels()
+    x_train, y_train, x_test, y_test = data_loader.get_seq_lists_split(train_prop)
 
-    epochs = 20
+    epochs = 10
     batch_size = 20
     learning_rate = 0.001
 
     lstm = LSTM(epochs, batch_size, learning_rate)
-    lstm.load_data(x_all, y_all)
+    lstm.load_data(x_train, y_train)
     lstm.setup_model()
     lstm.train()
 
     #print(np.c_[np.array(x_all), lstm.get_preds(x_all), np.array(y_all)])
-    print('% conversions', sum(y_all)/len(y_all))
-    print('nr samples: ', len(y_all))
+    print('% conversions train', sum(y_train)/len(y_train))
+    print('nr samples train: ', len(y_train))
