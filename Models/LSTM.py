@@ -17,12 +17,13 @@ class LSTM:
         self.batch_size = batch_size
         self.learning_rate = learning_rate
         self.max_seq_len = None
+        self.nr_features = None
         self.x_train = None
         self.y_train = None
 
     def setup_model(self):
         self.model = tf.keras.Sequential()
-        self.model.add(tf.keras.layers.Masking(mask_value=-1, input_shape=(self.x_train.shape[1], 1)))
+        self.model.add(tf.keras.layers.Masking(mask_value=0, input_shape=(self.x_train.shape[1], self.x_train.shape[2])))#1)))
         self.model.add(keras.layers.LSTM(units=32))
         #self.model.add(Attention())
         self.model.add(keras.layers.Dense(units=64, activation='relu'))
@@ -34,22 +35,20 @@ class LSTM:
 
     def load_data(self, x_train, y_train):
         # sequences will be padded to the length of the longest individual sequence
-        padded_data = keras.preprocessing.sequence.pad_sequences(x_train, value=-1)
+        padded_data = keras.preprocessing.sequence.pad_sequences(x_train, value=-1, padding='post')
         self.max_seq_len = padded_data.shape[1]
-        #print(self.max_seq_len)
-        #print(padded_data)
-        self.x_train = padded_data.reshape(padded_data.shape[0], self.max_seq_len, 1)
+        self.nr_features = len(np.unique(padded_data)) - 1
+        self.x_train = tf.one_hot(padded_data, self.nr_features, on_value=1, off_value=0, axis=-1)#padded_data.reshape(padded_data.shape[0], self.max_seq_len, 1)
         self.y_train = np.array(y_train)
-        #print(self.x_train)
-        #print(self.y_train)
 
     def train(self):
         history = self.model.fit(self.x_train, self.y_train, epochs=self.epochs, batch_size=self.batch_size,
                                  validation_split=0.2, verbose=1)
 
     def get_preds(self, x):
-        padded_x = keras.preprocessing.sequence.pad_sequences(x, maxlen=self.max_seq_len, value=-1).reshape(len(x), self.max_seq_len, 1)
-        return self.model.predict(padded_x, verbose=0)
+        padded_x = keras.preprocessing.sequence.pad_sequences(x, maxlen=self.max_seq_len, value=-1, padding='post')#.reshape(len(x), self.max_seq_len, 1)
+        one_hot_x = tf.one_hot(padded_x, self.nr_features, on_value=1, off_value=0, axis=-1)
+        return self.model.predict(one_hot_x, verbose=0)
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
@@ -66,21 +65,21 @@ if __name__ == '__main__':
     ratio_maj_min_class = 1
     min_seq_len = 1 # Note! does overwrite class ratio, just for debugging
     simulate = False
-    cohort_size = 10000
+    cohort_size = 1000
     sim_time = 200
 
     data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp,
                                  nr_top_ch, ratio_maj_min_class, simulate, cohort_size, sim_time)
 
     x_all, y_all = data_loader.get_all_seq_lists_and_labels(min_seq_len)
-    #x_all = [[0, 1, 1, 3], [2, 1]]
+    #x_all = [[0, 1, 1, 3, 1], [0, 2, 1]]
     #y_all = [1, 0]
     #print(x_all)
     #print(y_all)
 
-    epochs = 50
-    batch_size = 50
-    learning_rate = 0.01
+    epochs = 10
+    batch_size = 20
+    learning_rate = 0.001
 
     lstm = LSTM(epochs, batch_size, learning_rate)
     lstm.load_data(x_all, y_all)
