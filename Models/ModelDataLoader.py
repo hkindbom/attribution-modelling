@@ -82,14 +82,13 @@ class ModelDataLoader:
             return True
         return False
 
-    def get_all_seq_lists_and_labels(self, min_seq_len=1):
+    def get_all_seq_lists_and_labels(self):
         seq_lists = []
         labels = []
         for client_id in self.clients_dict:
             session_channels = self.clients_dict[client_id]['session_channels']
-            if len(session_channels) >= min_seq_len:
-                labels.append(self.clients_dict[client_id]['label'])
-                seq_lists.append(session_channels)
+            labels.append(self.clients_dict[client_id]['label'])
+            seq_lists.append(session_channels)
         return seq_lists, labels
 
     def get_feature_matrix_split(self, train_prop, use_time=False, use_LTV=False):
