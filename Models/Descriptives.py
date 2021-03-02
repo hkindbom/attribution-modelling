@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
+from sklearn.metrics import jaccard_score
 from DataProcessing import DataProcessing
 from scipy.stats import pearsonr
 
@@ -53,11 +54,12 @@ class Descriptives:
                 for ctrl_var_value in ctrl_var_values:
                     ctrl_vector = np.array(ch_sessions_df[ctrl_var] == ctrl_var_value).astype(int)
                     corr_coef = pearsonr(channel_conv_vector, ctrl_vector)[0]
+                    jaccard = jaccard_score(channel_conv_vector, ctrl_vector)
                     prop_ctrl_var_in_data = len(self.GA_df[self.GA_df[ctrl_var] == ctrl_var_value])/len(self.GA_df)
                     prop_ctrl_var_in_ch = np.sum(ctrl_vector)/len(ctrl_vector)
                     if corr_coef > threshold_corr and prop_ctrl_var_in_data > threshold_prop:
                         result_dict = {'channel': channel, 'ctrl-var': ctrl_var, 'ctrl-var-value': ctrl_var_value,
-                                       'corr coef': corr_coef, 'prop ctrl var in data': prop_ctrl_var_in_data,
+                                       'corr coef': corr_coef, 'jaccard':jaccard, 'prop ctrl var in data': prop_ctrl_var_in_data,
                                        'prop ctrl variable in channel': prop_ctrl_var_in_ch}
                         correlation_df = correlation_df.append(result_dict, ignore_index=True)
         correlation_df = correlation_df.reindex(correlation_df['corr coef'].abs().sort_values(ascending=False).index)
@@ -171,7 +173,7 @@ class Descriptives:
         plt.ylabel('Counts')
         plt.show()
 
-    def plot_user_conversions_not_last_against_source_curve(self, column, nr_channels=3, bandwidth=10,
+    def plot_user_conversions_not_last_against_source_curve(self, column, nr_channels=3, bandwidth=10.,
                                                             transparency=0.4):
         conversion_paths_not_last_df = self.get_conversion_paths_not_last()
         channels = conversion_paths_not_last_df['source_medium'].value_counts()[:nr_channels]
@@ -238,5 +240,5 @@ if __name__ == '__main__':
 
     descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
     #descriptives.show_interesting_results_combined()
-    ctrl_vars_list = ['device_category', 'city', 'browser']
-    descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_corr=0, threshold_prop=0.05)
+    ctrl_vars_list = ['device_category', 'city', 'browser', 'operating_system']
+    descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_corr=0, threshold_prop=0)

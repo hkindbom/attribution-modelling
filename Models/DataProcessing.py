@@ -74,8 +74,8 @@ class ApiDataGA:
     def create_report_df(self):  # Queries the Analytics Reporting API V4. Returns the API response.
         metrics = ['ga:sessions', 'ga:goal1Completions', 'ga:goal1Value']
         # dimension6 = cllientId, dimension7 = sessionId, dimension8 = hit timestamp
-        dims = ['ga:dimension6', 'ga:dimension7', 'ga:dimension8', 'ga:campaign', 'ga:sourcemedium', 'ga:source',
-                'ga:devicecategory', 'ga:city', 'ga:browser']#, 'ga:screenResolution']
+        dims = ['ga:dimension6', 'ga:dimension7', 'ga:dimension8', 'ga:sourcemedium', 'ga:source',
+                'ga:devicecategory', 'ga:city', 'ga:browser', 'ga:operatingSystem']
         data = self.analytics.reports().batchGet(
             body={
                 'reportRequests': [
@@ -146,8 +146,8 @@ class DataProcessing:
                                               'sourcemedium': 'source_medium',
                                               'goal1Completions': 'conversion',
                                               'goal1Value': 'conversion_value',
-                                              'devicecategory': 'device_category'})
-        #                                      'screenResolution': 'screen_resolution'})
+                                              'devicecategory': 'device_category',
+                                              'operatingSystem': 'operating_system'})
 
         # Be aware! Check time zones Daylight Savings Time (GA vs. MP)
         GA_api_df['timestamp'] = pd.to_datetime(GA_api_df['timestamp'], utc=True)
