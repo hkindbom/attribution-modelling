@@ -55,13 +55,6 @@ class LSTM:
                                  validation_split=self.validation_split, verbose=1)
 
     def get_attention_weights(self):
-        #for layer in self.model.layers:
-        #    if 'attention' in layer.get_config()['name']:
-        #        pass#print(layer.get_config(), layer.get_weights())
-
-        # https://keras.io/getting_started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer-feature-extraction
-        # https://stackoverflow.com/questions/41711190/keras-how-to-get-the-output-of-each-layer
-        # https://stackoverflow.com/questions/53867351/how-to-visualize-attention-weights
         layer_name = 'attention_weight'
         attention_layer_model = keras.Model(inputs=self.model.input, outputs=self.model.get_layer(layer_name).output)
         attention_output = attention_layer_model(self.x_train)
@@ -102,6 +95,9 @@ class LSTM:
         return norm_attr
 
     def get_non_normalized_attributions(self):
+        for layer in self.model.layers:
+            if 'attention' in layer.get_config()['name']:
+                print(layer.get_config(), layer.get_weights())
         one_hot_maps = self.get_one_hot_maps(self.x_train)
         attention_weights = self.get_attention_weights().numpy()
         non_normalized_attributions = np.zeros(self.nr_features)
@@ -146,6 +142,5 @@ if __name__ == '__main__':
     lstm.load_data(x_train, y_train, x_test, y_test)
     lstm.train()
     print(lstm.get_non_normalized_attributions())
-    print(data_loader.get_idx_to_ch_map())
     print(lstm.get_results())
 
