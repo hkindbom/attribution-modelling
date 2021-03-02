@@ -3,7 +3,7 @@ from tensorflow import keras
 from attention import Attention
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
+from sklearn.metrics import roc_auc_score, confusion_matrix
 from ModelDataLoader import ModelDataLoader
 
 import sys
@@ -26,8 +26,8 @@ class LSTM:
     def setup_model(self):
         self.model = tf.keras.Sequential()
         self.model.add(tf.keras.layers.Masking(mask_value=0, input_shape=(self.x_train.shape[1], self.x_train.shape[2])))
-        self.model.add(keras.layers.LSTM(units=32))
-        #self.model.add(Attention())
+        self.model.add(keras.layers.LSTM(units=32, return_sequences=True))
+        self.model.add(Attention(name='attention_weight'))
         self.model.add(keras.layers.Dense(units=64, activation='relu'))
         self.model.add(keras.layers.Dense(units=1, activation='sigmoid'))
 
@@ -53,6 +53,22 @@ class LSTM:
     def train(self):
         history = self.model.fit(self.x_train, self.y_train, epochs=self.epochs, batch_size=self.batch_size,
                                  validation_split=self.validation_split, verbose=1)
+
+    def get_attention_weights(self):
+
+        for layer in self.model.layers:
+            if 'attention' in layer.get_config()['name']:
+                pass#print(layer.get_config(), layer.get_weights())
+
+        # https://keras.io/getting_started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer-feature-extraction
+        # https://stackoverflow.com/questions/41711190/keras-how-to-get-the-output-of-each-layer
+        # https://stackoverflow.com/questions/53867351/how-to-visualize-attention-weights
+        layer_name = 'attention_weight'
+        intermediate_layer_model = keras.Model(inputs=self.model.input,
+                                               outputs=self.model.get_layer(layer_name).output)
+        intermediate_output = intermediate_layer_model(self.x_train)
+        print(intermediate_output)
+        print(self.max_seq_len)
 
     def get_preds(self, one_hot_x):
         return self.model.predict(one_hot_x, verbose=0)
@@ -96,7 +112,7 @@ if __name__ == '__main__':
 
     x_train, y_train, x_test, y_test = data_loader.get_seq_lists_split(train_prop)
 
-    epochs = 20
+    epochs = 10
     batch_size = 20
     learning_rate = 0.001
     validation_split = 0.2
@@ -104,5 +120,6 @@ if __name__ == '__main__':
     lstm = LSTM(epochs, batch_size, learning_rate, validation_split)
     lstm.load_data(x_train, y_train, x_test, y_test)
     lstm.train()
+    lstm.get_attention_weights()
     print(lstm.get_results())
 
