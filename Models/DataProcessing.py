@@ -74,8 +74,8 @@ class ApiDataGA:
     def create_report_df(self):  # Queries the Analytics Reporting API V4. Returns the API response.
         metrics = ['ga:sessions', 'ga:goal1Completions', 'ga:goal1Value']
         # dimension6 = cllientId, dimension7 = sessionId, dimension8 = hit timestamp
-        dims = ['ga:dimension6', 'ga:dimension7', 'ga:dimension8', 'ga:campaign',
-                'ga:sourcemedium', 'ga:source', 'ga:devicecategory']
+        dims = ['ga:dimension6', 'ga:dimension7', 'ga:dimension8', 'ga:campaign', 'ga:sourcemedium', 'ga:source',
+                'ga:devicecategory', 'ga:city', 'ga:browser']#, 'ga:screenResolution']
         data = self.analytics.reports().batchGet(
             body={
                 'reportRequests': [
@@ -142,13 +142,12 @@ class DataProcessing:
         GA_api_df = GA_api.get_GA_df()
         GA_api_df = GA_api_df.rename(columns={'dimension6': 'client_id',
                                               'dimension7': 'session_id',
-                                              'campaign': 'campaign',
-                                              'sessions': 'sessions',
                                               'dimension8': 'timestamp',
                                               'sourcemedium': 'source_medium',
                                               'goal1Completions': 'conversion',
                                               'goal1Value': 'conversion_value',
                                               'devicecategory': 'device_category'})
+        #                                      'screenResolution': 'screen_resolution'})
 
         # Be aware! Check time zones Daylight Savings Time (GA vs. MP)
         GA_api_df['timestamp'] = pd.to_datetime(GA_api_df['timestamp'], utc=True)
@@ -382,7 +381,7 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-01.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date_data = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 

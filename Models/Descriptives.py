@@ -52,9 +52,13 @@ class Descriptives:
                 for ctrl_var_value in ctrl_vars_dict[ctrl_var]:
                     ctrl_vector = np.array(ch_sessions_df[ctrl_var] == ctrl_var_value).astype(int)
                     corr_coef = pearsonr(channel_conv_vector, ctrl_vector)
-                    result_dict = {'Channel': channel, 'Ctrl-var': ctrl_var, 'Ctrl-var-value': ctrl_var_value,
-                                   'Corr coef': corr_coef[0]}
+                    prop_ctrl_var_in_data = len(self.GA_df[self.GA_df[ctrl_var] == ctrl_var_value])/len(self.GA_df)
+                    prop_ctrl_var_in_ch = np.sum(ctrl_vector)/len(ctrl_vector)
+                    result_dict = {'channel': channel, 'ctrl-var': ctrl_var, 'ctrl-var-value': ctrl_var_value,
+                                   'corr coef': corr_coef[0], 'prop ctrl var in data': prop_ctrl_var_in_data,
+                                   'prop ctrl variable in channel': prop_ctrl_var_in_ch}
                     correlation_df = correlation_df.append(result_dict, ignore_index=True)
+        correlation_df = correlation_df.reindex(correlation_df['corr coef'].abs().sort_values(ascending=False).index)
         print(correlation_df)
 
     def plot_path_length_GA(self):
@@ -232,5 +236,7 @@ if __name__ == '__main__':
 
     descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
     #descriptives.show_interesting_results_combined()
-    ctrl_vars_dict = {'device_category': ['mobile', 'desktop', 'tablet']}
+    ctrl_vars_dict = {'device_category': ['mobile', 'desktop', 'tablet'],
+                      'city': ['Stockholm', 'Goteborg', 'Malmo'],
+                      'browser': ['Chrome', 'Safari']}
     descriptives.show_ctrl_vars_corr(ctrl_vars_dict)
