@@ -95,16 +95,14 @@ class LSTM:
         return norm_attr
 
     def get_non_normalized_attributions(self):
-        for layer in self.model.layers:
-            if 'attention' in layer.get_config()['name']:
-                print(layer.get_config(), layer.get_weights())
         one_hot_maps = self.get_one_hot_maps(self.x_train)
         attention_weights = self.get_attention_weights().numpy()
         non_normalized_attributions = np.zeros(self.nr_features)
 
         for sample_idx, sample_chs in enumerate(one_hot_maps):
             for att_idx, ch in enumerate(sample_chs):
-                non_normalized_attributions[ch] += attention_weights[sample_idx, att_idx]
+                if self.y_train[sample_idx] == 1:
+                    non_normalized_attributions[ch] += attention_weights[sample_idx, att_idx]
         return list(non_normalized_attributions)
 
 
