@@ -1,8 +1,9 @@
 import pandas as pd
 import numpy as np
-from sklearn.neighbors import KernelDensity
 import matplotlib.pyplot as plt
+from sklearn.neighbors import KernelDensity
 from DataProcessing import DataProcessing
+from scipy.stats import pearsonr
 
 
 class Descriptives:
@@ -40,6 +41,21 @@ class Descriptives:
     def get_conversion_paths_not_last(self):
         conversion_paths = self.get_conversion_paths()
         return conversion_paths.loc[conversion_paths['conversion'] == 0]
+
+    def show_ctrl_vars_corr(self, ctrl_vars_dict):
+        correlation_df = pd.DataFrame()
+        channels = self.GA_df['source_medium'].value_counts().index
+        for channel in channels:
+            ch_sessions_df = self.GA_df[self.GA_df['source_medium'] == channel]
+            channel_conv_vector = ch_sessions_df['converted_eventually'].to_numpy()
+            for ctrl_var in ctrl_vars_dict:
+                for ctrl_var_value in ctrl_vars_dict[ctrl_var]:
+                    ctrl_vector = np.array(ch_sessions_df[ctrl_var] == ctrl_var_value).astype(int)
+                    corr_coef = pearsonr(channel_conv_vector, ctrl_vector)
+                    result_dict = {'Channel': channel, 'Ctrl-var': ctrl_var, 'Ctrl-var-value': ctrl_var_value,
+                                   'Corr coef': corr_coef[0]}
+                    correlation_df = correlation_df.append(result_dict, ignore_index=True)
+        print(correlation_df)
 
     def plot_path_length_GA(self):
         conversion_paths = self.get_conversion_paths()
@@ -206,7 +222,7 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', None)
     pd.options.display.width = 0
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-01.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
     end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
 
@@ -215,4 +231,6 @@ if __name__ == '__main__':
     nr_top_ch = 15
 
     descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
-    descriptives.show_interesting_results_combined()
+    #descriptives.show_interesting_results_combined()
+    ctrl_vars_dict = {'device_category': ['mobile', 'desktop', 'tablet']}
+    descriptives.show_ctrl_vars_corr(ctrl_vars_dict)
