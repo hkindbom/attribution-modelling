@@ -82,6 +82,7 @@ class Experiments:
         self.attributions['SP'] = self.SP_model.get_normalized_attributions()
         self.attributions['LTA'] = self.LTA_model.get_normalized_attributions()
         self.attributions['LR'] = self.LR_model.get_normalized_attributions()
+        self.attributions['LSTM'] = self.LSTM_model.get_normalized_attributions()
 
     def plot_attributions(self):
         channel_names = []
@@ -91,7 +92,8 @@ class Experiments:
         df = pd.DataFrame({'Channel': channel_names,
                            'LTA Attribution': self.attributions['LTA'],
                            'SP Attribution': self.attributions['SP'],
-                           'LR Attribution': self.attributions['LR']})
+                           'LR Attribution': self.attributions['LR'],
+                           'LSTM Attribution': self.attributions['LSTM']})
 
         ax = df.plot.bar(x='Channel', rot=90)
         ax.set_xlabel("Source / Medium")

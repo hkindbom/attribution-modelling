@@ -55,20 +55,30 @@ class LSTM:
                                  validation_split=self.validation_split, verbose=1)
 
     def get_attention_weights(self):
-
-        for layer in self.model.layers:
-            if 'attention' in layer.get_config()['name']:
-                pass#print(layer.get_config(), layer.get_weights())
+        #for layer in self.model.layers:
+        #    if 'attention' in layer.get_config()['name']:
+        #        pass#print(layer.get_config(), layer.get_weights())
 
         # https://keras.io/getting_started/faq/#how-can-i-obtain-the-output-of-an-intermediate-layer-feature-extraction
         # https://stackoverflow.com/questions/41711190/keras-how-to-get-the-output-of-each-layer
         # https://stackoverflow.com/questions/53867351/how-to-visualize-attention-weights
         layer_name = 'attention_weight'
-        intermediate_layer_model = keras.Model(inputs=self.model.input,
-                                               outputs=self.model.get_layer(layer_name).output)
-        intermediate_output = intermediate_layer_model(self.x_train)
-        print(intermediate_output)
-        print(self.max_seq_len)
+        attention_layer_model = keras.Model(inputs=self.model.input, outputs=self.model.get_layer(layer_name).output)
+        attention_output = attention_layer_model(self.x_train)
+        return attention_output
+
+    def get_one_hot_maps(self, data):
+        one_hot_maps = []
+        for one_hot_arr in data.numpy():
+            one_hot_arr_cut = self.cut_one_hot(one_hot_arr)
+            one_hot_maps.append(list(np.argmax(one_hot_arr_cut, axis=1)))
+        return one_hot_maps
+
+    def cut_one_hot(self, one_hot_arr):
+        for idx, row in enumerate(one_hot_arr):
+            if row.sum() == 0:
+                return one_hot_arr[:idx]
+        return one_hot_arr
 
     def get_preds(self, one_hot_x):
         return self.model.predict(one_hot_x, verbose=0)
@@ -85,6 +95,21 @@ class LSTM:
 
     def one_hot_encode_x(self, padded_data):
         return tf.one_hot(padded_data, self.nr_features, on_value=1, off_value=0, axis=-1)
+
+    def get_normalized_attributions(self):
+        unnorm_attr = self.get_non_normalized_attributions()
+        norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
+        return norm_attr
+
+    def get_non_normalized_attributions(self):
+        one_hot_maps = self.get_one_hot_maps(self.x_train)
+        attention_weights = self.get_attention_weights().numpy()
+        non_normalized_attributions = np.zeros(self.nr_features)
+
+        for sample_idx, sample_chs in enumerate(one_hot_maps):
+            for att_idx, ch in enumerate(sample_chs):
+                non_normalized_attributions[ch] += attention_weights[sample_idx, att_idx]
+        return list(non_normalized_attributions)
 
 
 if __name__ == '__main__':
@@ -120,6 +145,7 @@ if __name__ == '__main__':
     lstm = LSTM(epochs, batch_size, learning_rate, validation_split)
     lstm.load_data(x_train, y_train, x_test, y_test)
     lstm.train()
-    lstm.get_attention_weights()
+    print(lstm.get_non_normalized_attributions())
+    print(data_loader.get_idx_to_ch_map())
     print(lstm.get_results())
 
