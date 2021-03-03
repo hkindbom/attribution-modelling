@@ -98,12 +98,14 @@ class LSTM:
         one_hot_maps = self.get_one_hot_maps(self.x_train)
         attention_weights = self.get_attention_weights().numpy()
         non_normalized_attributions = np.zeros(self.nr_features)
+        channel_occur = np.ones(self.nr_features)
 
         for sample_idx, sample_chs in enumerate(one_hot_maps):
-            for att_idx, ch in enumerate(sample_chs):
-                if self.y_train[sample_idx] == 1:
+            if self.y_train[sample_idx] == 1 and len(sample_chs) > 1:
+                for att_idx, ch in enumerate(sample_chs):
                     non_normalized_attributions[ch] += attention_weights[sample_idx, att_idx]
-        return list(non_normalized_attributions)
+                    channel_occur[ch] += 1
+        return list(non_normalized_attributions / channel_occur)
 
 
 if __name__ == '__main__':
