@@ -161,7 +161,7 @@ if __name__ == '__main__':
     lstm = LSTM(epochs, batch_size, learning_rate, validation_split)
     lstm.load_data(x_train, y_train, x_test, y_test)
     lstm.train()
-    print(lstm.get_normalized_attributions())
+    print('Channel attributions: ',lstm.get_normalized_attributions())
     print('Touchpoint attributions: ', lstm.get_touchpoint_attr(tp_attr_seq_len))
     print(lstm.get_results())
 

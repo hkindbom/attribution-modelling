@@ -100,6 +100,16 @@ class Experiments:
         plt.tight_layout()
         plt.title('Attributions', fontsize=16)
         plt.show()
+        self.plot_touchpoint_attributions()
+
+    def plot_touchpoint_attributions(self, max_seq_len=5):
+        for seq_len in range(2, max_seq_len+1):
+            touchpoint_attr = self.LSTM_model.get_touchpoint_attr(seq_len)
+            plt.plot(touchpoint_attr, marker='.', linewidth=2, markersize=12)
+            plt.title('Touchpoint attention attributions')
+            plt.xlabel('Touchpoint index')
+            plt.ylabel('Normalized attention')
+        plt.show()
 
     def profit_eval(self, total_budget):
         if self.simulate:
@@ -138,7 +148,7 @@ if __name__ == '__main__':
     cohort_size = 10000
     sim_time = 100
 
-    epochs = 20
+    epochs = 10
     batch_size = 20
     learning_rate = 0.001
 
