@@ -99,8 +99,8 @@ class LSTM:
             for t_p_idx, t_p in enumerate(seq):
                 if np.argmax(t_p) == ch_idx:
                     t_p_to_del.append(t_p_idx)
-                    ch_occur += 1
 
+            ch_occur += 1 if len(t_p_to_del) > 0 else 0
             seq_deleted = np.delete(x[seq_idx], t_p_to_del, 0)
             new_seq = np.concatenate((seq_deleted, np.zeros((len(t_p_to_del), self.nr_channels))), axis=0)
             x[seq_idx] = new_seq
