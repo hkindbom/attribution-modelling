@@ -22,6 +22,7 @@ class LSTM:
         self.y_train = None
         self.x_test = None
         self.y_test = None
+        self.x_train_raw = []
 
     def setup_model(self):
         self.model = tf.keras.Sequential()
@@ -36,6 +37,7 @@ class LSTM:
                            metrics=[keras.metrics.Recall(), keras.metrics.Precision(), 'accuracy'])
 
     def load_data(self, x_train, y_train, x_test, y_test):
+        self.x_train_raw = x_train
         # sequences will be padded to the length of the longest individual sequence
         padded_x_train = self.pad_x(x_train)
         self.max_seq_len = padded_x_train.shape[1]
@@ -95,7 +97,7 @@ class LSTM:
         return norm_attr
 
     def get_non_normalized_attributions(self):
-        one_hot_maps = self.get_one_hot_maps(self.x_train)
+        """one_hot_maps = self.get_one_hot_maps(self.x_train)
         attention_weights = self.get_attention_weights().numpy()
         non_normalized_attributions = np.zeros(self.nr_features)
         channel_occur = np.ones(self.nr_features)
@@ -106,7 +108,33 @@ class LSTM:
                     non_normalized_attributions[ch] += attention_weights[sample_idx, att_idx]
                     channel_occur[ch] += 1
         return list(non_normalized_attributions / channel_occur)
+        """
+        non_normalized_attributions = np.zeros(self.nr_features)
+        preds_w = self.get_preds(self.x_train)
+        for ch_idx in range(self.nr_features):
+            x_train_w_o_ch, single_indices = self.remove_ch(self.x_train, ch_idx)
+            preds_w_o = self.get_preds(x_train_w_o_ch)
+            preds_w_o[single_indices] = 0.5
+            diff_preds = preds_w - preds_w_o # add mean diff
+            non_normalized_attributions[ch_idx] = max(diff_preds.sum(), 0)
+        return non_normalized_attributions
 
+    def remove_ch(self, x, ch_idx):
+        x = x.numpy()
+        single_indices = []
+        for sample_idx, sample in enumerate(x):
+            t_p_to_del = []
+            for t_p_idx, t_p in enumerate(sample):
+                if np.argmax(t_p) == ch_idx:
+                    t_p_to_del.append(t_p_idx)
+
+            sample_deleted = np.delete(x[sample_idx], t_p_to_del, 0)
+            new_sample = np.concatenate((sample_deleted, np.zeros((len(t_p_to_del), self.nr_features))), axis=0)
+            x[sample_idx] = new_sample
+
+            if new_sample.max() == 0:
+                single_indices.append(sample_idx)
+        return tf.constant(x), single_indices
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
@@ -122,7 +150,7 @@ if __name__ == '__main__':
     nr_top_ch = 10
     ratio_maj_min_class = 1
     train_prop = 0.8
-    simulate = False
+    simulate = True
     cohort_size = 1000
     sim_time = 200
 
