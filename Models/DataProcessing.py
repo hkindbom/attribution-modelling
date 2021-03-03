@@ -166,8 +166,12 @@ class DataProcessing:
 
         self.GA_df = self.GA_df[self.GA_df['client_id'].isin(clients_to_keep_df['client_id'])]
 
+    def filter_ctrl_var(self):
+        #ctrl_var_sessions_df =
+        pass
+
     def drop_duplicate_sessions(self):
-        self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
+        self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True, inplace=True)
         self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
 
     def drop_uncommon_channels(self):

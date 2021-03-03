@@ -2,9 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from sklearn.neighbors import KernelDensity
-from sklearn.metrics import jaccard_score
 from DataProcessing import DataProcessing
-from scipy.stats import pearsonr
 
 
 class Descriptives:
@@ -43,7 +41,11 @@ class Descriptives:
         conversion_paths = self.get_conversion_paths()
         return conversion_paths.loc[conversion_paths['conversion'] == 0]
 
-    def show_ctrl_vars_corr(self, ctrl_vars_list, threshold_corr=0., threshold_prop=0.):
+    def corr_metric(self, x, y):
+        cov = np.cov(x,y)[0][1]
+        return cov / (np.std(x) * np.std(y)) if cov !=0 else 0
+
+    def show_ctrl_vars_corr(self, ctrl_vars_list, threshold_corr=0.3, threshold_prop=0.):
         correlation_df = pd.DataFrame()
         channels = self.GA_df['source_medium'].value_counts().index
         for channel in channels:
@@ -53,13 +55,12 @@ class Descriptives:
                 ctrl_var_values = self.GA_df[ctrl_var].value_counts().index
                 for ctrl_var_value in ctrl_var_values:
                     ctrl_vector = np.array(ch_sessions_df[ctrl_var] == ctrl_var_value).astype(int)
-                    corr_coef = pearsonr(channel_conv_vector, ctrl_vector)[0]
-                    jaccard = jaccard_score(channel_conv_vector, ctrl_vector)
+                    corr_coef = self.corr_metric(channel_conv_vector, ctrl_vector)
                     prop_ctrl_var_in_data = len(self.GA_df[self.GA_df[ctrl_var] == ctrl_var_value])/len(self.GA_df)
                     prop_ctrl_var_in_ch = np.sum(ctrl_vector)/len(ctrl_vector)
-                    if corr_coef > threshold_corr and prop_ctrl_var_in_data > threshold_prop:
+                    if prop_ctrl_var_in_data > threshold_prop and abs(corr_coef) > threshold_corr:
                         result_dict = {'channel': channel, 'ctrl-var': ctrl_var, 'ctrl-var-value': ctrl_var_value,
-                                       'corr coef': corr_coef, 'jaccard':jaccard, 'prop ctrl var in data': prop_ctrl_var_in_data,
+                                       'corr coef': corr_coef, 'prop ctrl var in data': prop_ctrl_var_in_data,
                                        'prop ctrl variable in channel': prop_ctrl_var_in_ch}
                         correlation_df = correlation_df.append(result_dict, ignore_index=True)
         correlation_df = correlation_df.reindex(correlation_df['corr coef'].abs().sort_values(ascending=False).index)
@@ -240,5 +241,5 @@ if __name__ == '__main__':
 
     descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
     #descriptives.show_interesting_results_combined()
-    ctrl_vars_list = ['device_category', 'city', 'browser', 'operating_system']
+    ctrl_vars_list = ['device_category', 'city', 'browser', 'operating_system', 'operating_system']
     descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_corr=0, threshold_prop=0)
