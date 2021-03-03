@@ -17,7 +17,7 @@ class LSTM:
         self.learning_rate = learning_rate
         self.validation_split = validation_split
         self.max_seq_len = None
-        self.nr_features = None
+        self.nr_channels = None
         self.x_train = None
         self.y_train = None
         self.x_test = None
@@ -41,7 +41,7 @@ class LSTM:
         # sequences will be padded to the length of the longest individual sequence
         padded_x_train = self.pad_x(x_train)
         self.max_seq_len = padded_x_train.shape[1]
-        self.nr_features = len(np.unique(padded_x_train)) - 1
+        self.nr_channels = len(np.unique(padded_x_train)) - 1
 
         self.x_train = self.one_hot_encode_x(padded_x_train)
         self.y_train = np.array(y_train)
@@ -55,25 +55,6 @@ class LSTM:
     def train(self):
         history = self.model.fit(self.x_train, self.y_train, epochs=self.epochs, batch_size=self.batch_size,
                                  validation_split=self.validation_split, verbose=1)
-
-    def get_attention_weights(self):
-        layer_name = 'attention_weight'
-        attention_layer_model = keras.Model(inputs=self.model.input, outputs=self.model.get_layer(layer_name).output)
-        attention_output = attention_layer_model(self.x_train)
-        return attention_output
-
-    def get_one_hot_maps(self, data):
-        one_hot_maps = []
-        for one_hot_arr in data.numpy():
-            one_hot_arr_cut = self.cut_one_hot(one_hot_arr)
-            one_hot_maps.append(list(np.argmax(one_hot_arr_cut, axis=1)))
-        return one_hot_maps
-
-    def cut_one_hot(self, one_hot_arr):
-        for idx, row in enumerate(one_hot_arr):
-            if row.sum() == 0:
-                return one_hot_arr[:idx]
-        return one_hot_arr
 
     def get_preds(self, one_hot_x):
         return self.model.predict(one_hot_x, verbose=0)
@@ -89,52 +70,62 @@ class LSTM:
         return keras.preprocessing.sequence.pad_sequences(x, maxlen=maxlen, value=-1, padding='post')
 
     def one_hot_encode_x(self, padded_data):
-        return tf.one_hot(padded_data, self.nr_features, on_value=1, off_value=0, axis=-1)
+        return tf.one_hot(padded_data, self.nr_channels, on_value=1, off_value=0, axis=-1)
 
     def get_normalized_attributions(self):
         unnorm_attr = self.get_non_normalized_attributions()
         norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
         return norm_attr
 
-    def get_non_normalized_attributions(self):
-        """one_hot_maps = self.get_one_hot_maps(self.x_train)
-        attention_weights = self.get_attention_weights().numpy()
-        non_normalized_attributions = np.zeros(self.nr_features)
-        channel_occur = np.ones(self.nr_features)
-
-        for sample_idx, sample_chs in enumerate(one_hot_maps):
-            if self.y_train[sample_idx] == 1 and len(sample_chs) > 1: # fix this, maybe only train lstm on seq_len > 1
-                for att_idx, ch in enumerate(sample_chs):
-                    non_normalized_attributions[ch] += attention_weights[sample_idx, att_idx]
-                    channel_occur[ch] += 1
-        return list(non_normalized_attributions / channel_occur)
-        """
-        non_normalized_attributions = np.zeros(self.nr_features)
+    def get_non_normalized_attributions(self,):
+        non_normalized_attributions = np.zeros(self.nr_channels)
         preds_w = self.get_preds(self.x_train)
-        for ch_idx in range(self.nr_features):
-            x_train_w_o_ch, single_indices = self.remove_ch(self.x_train, ch_idx)
+        for ch_idx in range(self.nr_channels):
+            x_train_w_o_ch, single_indices, ch_occur = self.remove_ch(self.x_train, ch_idx)
             preds_w_o = self.get_preds(x_train_w_o_ch)
+
+            # correcting threshold for conversion/non-conversion
             preds_w_o[single_indices] = 0.5
-            diff_preds = preds_w - preds_w_o # add mean diff
-            non_normalized_attributions[ch_idx] = max(diff_preds.sum(), 0)
+            diff_preds = preds_w - preds_w_o
+            non_normalized_attributions[ch_idx] = max(diff_preds.sum(), 0) / ch_occur
         return non_normalized_attributions
 
     def remove_ch(self, x, ch_idx):
         x = x.numpy()
         single_indices = []
-        for sample_idx, sample in enumerate(x):
+        ch_occur = 0
+        for seq_idx, seq in enumerate(x):
             t_p_to_del = []
-            for t_p_idx, t_p in enumerate(sample):
+            for t_p_idx, t_p in enumerate(seq):
                 if np.argmax(t_p) == ch_idx:
                     t_p_to_del.append(t_p_idx)
+                    ch_occur += 1
 
-            sample_deleted = np.delete(x[sample_idx], t_p_to_del, 0)
-            new_sample = np.concatenate((sample_deleted, np.zeros((len(t_p_to_del), self.nr_features))), axis=0)
-            x[sample_idx] = new_sample
+            seq_deleted = np.delete(x[seq_idx], t_p_to_del, 0)
+            new_seq = np.concatenate((seq_deleted, np.zeros((len(t_p_to_del), self.nr_channels))), axis=0)
+            x[seq_idx] = new_seq
 
-            if new_sample.max() == 0:
-                single_indices.append(sample_idx)
-        return tf.constant(x), single_indices
+            # identifying sequences with only one channel
+            if new_seq.max() == 0:
+                single_indices.append(seq_idx)
+        return tf.constant(x), single_indices, ch_occur
+
+    def get_attention_weights(self):
+        layer_name = 'attention_weight'
+        attention_layer_model = keras.Model(inputs=self.model.input, outputs=self.model.get_layer(layer_name).output)
+        attention_output = attention_layer_model(self.x_train)
+        return attention_output
+
+    def get_touchpoint_attr(self, seq_len):
+        attention_weights = self.get_attention_weights().numpy()
+        touchpoint_attr = np.zeros(seq_len)
+        nr_matched_seq = 0
+        for seq_idx, seq_attention in enumerate(attention_weights):
+            if self.y_train[seq_idx] == 1 and len(self.x_train_raw[seq_idx]) == seq_len:
+                touchpoint_attr += seq_attention[:seq_len]
+                nr_matched_seq += 1
+        print('Basing touchpoint attribution on ', nr_matched_seq, ' sequences')
+        return touchpoint_attr / touchpoint_attr.sum()
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
@@ -165,10 +156,12 @@ if __name__ == '__main__':
     batch_size = 20
     learning_rate = 0.001
     validation_split = 0.2
+    tp_attr_seq_len = 5
 
     lstm = LSTM(epochs, batch_size, learning_rate, validation_split)
     lstm.load_data(x_train, y_train, x_test, y_test)
     lstm.train()
-    print(lstm.get_non_normalized_attributions())
+    print(lstm.get_normalized_attributions())
+    print('Touchpoint attributions: ', lstm.get_touchpoint_attr(tp_attr_seq_len))
     print(lstm.get_results())
 
