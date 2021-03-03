@@ -101,7 +101,7 @@ class LSTM:
         channel_occur = np.ones(self.nr_features)
 
         for sample_idx, sample_chs in enumerate(one_hot_maps):
-            if self.y_train[sample_idx] == 1 and len(sample_chs) > 1:
+            if self.y_train[sample_idx] == 1 and len(sample_chs) > 1: # fix this, maybe only train lstm on seq_len > 1
                 for att_idx, ch in enumerate(sample_chs):
                     non_normalized_attributions[ch] += attention_weights[sample_idx, att_idx]
                     channel_occur[ch] += 1
