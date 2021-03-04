@@ -45,7 +45,7 @@ class Descriptives:
         cov = np.cov(x,y)[0][1]
         return cov / (np.std(x) * np.std(y)) if cov !=0 else 0
 
-    def show_ctrl_vars_corr(self, ctrl_vars_list, threshold_corr=0.3, threshold_prop=0.):
+    def show_ctrl_vars_corr(self, ctrl_vars_list, threshold_corr=-1., threshold_prop=0.):
         correlation_df = pd.DataFrame()
         channels = self.GA_df['source_medium'].value_counts().index
         for channel in channels:
@@ -237,9 +237,9 @@ if __name__ == '__main__':
 
     start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
     end_date_cohort = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
-    nr_top_ch = 15
+    nr_top_ch = 10
 
     descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
     #descriptives.show_interesting_results_combined()
-    ctrl_vars_list = ['device_category', 'city', 'browser', 'operating_system', 'operating_system']
-    descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_corr=0, threshold_prop=0)
+    ctrl_vars_list = ['device_category', 'city', 'browser', 'operating_system']
+    descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_corr=0.2, threshold_prop=0.05)

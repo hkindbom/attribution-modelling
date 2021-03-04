@@ -7,12 +7,15 @@ from collections import Counter
 
 class ModelDataLoader:
     def __init__(self, start_date_data, end_date_data, start_data_cohort, end_data_cohort,
-                 file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1, simulate=False, cohort_size=100, sim_time=100):
+                 file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1, simulate=False, cohort_size=100, sim_time=100,
+                 ctrl_var=None, ctrl_var_value=None):
         self.data_processing = DataProcessing(start_date_data, end_date_data, start_data_cohort,
                                               end_data_cohort, file_path_mp, nr_top_ch=nr_top_ch,
                                               ratio_maj_min_class=ratio_maj_min_class)
         self.GA_df = None
         self.converted_clients_df = None
+        self.ctrl_var = ctrl_var
+        self.ctrl_var_value = ctrl_var_value
         self.clients_dict = {}
         self.ch_to_idx = {}
         self.idx_to_ch = {}
@@ -34,7 +37,7 @@ class ModelDataLoader:
         self.ch_to_idx, self.idx_to_ch = sim.get_ch_idx_maps()
 
     def load_real_data(self):
-        self.data_processing.process_all()
+        self.data_processing.process_all(self.ctrl_var, self.ctrl_var_value)
         self.GA_df = self.data_processing.get_GA_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
         self.create_clients_dict()

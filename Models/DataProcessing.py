@@ -135,7 +135,6 @@ class DataProcessing:
         self.file_path_GA_aggregated = file_path_GA_aggregated
         self.save_to_path = save_to_path
 
-
     def process_individual_data(self):
         GA_api = ApiDataGA(self.start_date_data, self.end_date_data)
         GA_api.initialize_api()
@@ -166,9 +165,12 @@ class DataProcessing:
 
         self.GA_df = self.GA_df[self.GA_df['client_id'].isin(clients_to_keep_df['client_id'])]
 
-    def filter_ctrl_var(self):
-        #ctrl_var_sessions_df =
-        pass
+    def filter_ctrl_var(self, ctrl_var=None, ctrl_var_value=None):
+        if ctrl_var is not None:
+            non_ctrl_var_df = self.GA_df[self.GA_df[ctrl_var] != ctrl_var_value]
+            ctrl_var_df = self.GA_df[(self.GA_df[ctrl_var] == ctrl_var_value) &
+                                     (~self.GA_df['client_id'].isin(non_ctrl_var_df['client_id']))]
+            self.GA_df = ctrl_var_df
 
     def drop_duplicate_sessions(self):
         self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True, inplace=True)
@@ -365,10 +367,11 @@ class DataProcessing:
     def get_client_mixpanel_info(self, client):
         return self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client]
 
-    def process_all(self):
+    def process_all(self, ctrl_var=None, ctrl_var_value=None):
         self.process_bq_funnel()
         self.process_individual_data()
         self.filter_cohort_sessions()
+        self.filter_ctrl_var(ctrl_var, ctrl_var_value)
         self.drop_duplicate_sessions()
         self.drop_uncommon_channels()
         self.group_by_client_id()

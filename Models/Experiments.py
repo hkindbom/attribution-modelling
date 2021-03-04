@@ -11,9 +11,11 @@ class Experiments:
 
     def __init__(self, start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                  file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class, use_time, simulate,
-                 cohort_size, sim_time, epochs, batch_size, learning_rate):
+                 cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var, ctrl_var_value):
+
         self.data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
-                                           file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size, sim_time)
+                                           file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size, sim_time,
+                                           ctrl_var, ctrl_var_value)
         self.use_time = use_time
         self.simulate = simulate
         self.SP_model = SP()
@@ -76,7 +78,6 @@ class Experiments:
         results_df['accuracy'] = (results_df['tp'] + results_df['tn']) / (results_df['tn'] + results_df['tp'] + results_df['fp'] + results_df['fn'])
 
         print('Theoretical max accuracy on all data is: ', self.data_loader.get_theo_max_accuracy())
-        print(results_df)
 
     def load_attributions(self):
         self.attributions['SP'] = self.SP_model.get_normalized_attributions()
@@ -140,9 +141,13 @@ if __name__ == '__main__':
     batch_size = 20
     learning_rate = 0.001
 
+    ctrl_var = None
+    ctrl_var_value = None
+
     experiments = Experiments(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                               file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
-                              simulate, cohort_size, sim_time, epochs, batch_size, learning_rate)
+                              simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
+                              ctrl_var_value)
     experiments.load_data()
     experiments.train_all()
     experiments.load_attributions()
