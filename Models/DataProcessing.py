@@ -74,8 +74,8 @@ class ApiDataGA:
     def create_report_df(self):  # Queries the Analytics Reporting API V4. Returns the API response.
         metrics = ['ga:sessions', 'ga:goal1Completions', 'ga:goal1Value']
         # dimension6 = cllientId, dimension7 = sessionId, dimension8 = hit timestamp
-        dims = ['ga:dimension6', 'ga:dimension7', 'ga:dimension8', 'ga:campaign',
-                'ga:sourcemedium', 'ga:source', 'ga:devicecategory']
+        dims = ['ga:dimension6', 'ga:dimension7', 'ga:dimension8', 'ga:sourcemedium', 'ga:source',
+                'ga:devicecategory', 'ga:city', 'ga:browser', 'ga:operatingSystem']
         data = self.analytics.reports().batchGet(
             body={
                 'reportRequests': [
@@ -135,20 +135,18 @@ class DataProcessing:
         self.file_path_GA_aggregated = file_path_GA_aggregated
         self.save_to_path = save_to_path
 
-
     def process_individual_data(self):
         GA_api = ApiDataGA(self.start_date_data, self.end_date_data)
         GA_api.initialize_api()
         GA_api_df = GA_api.get_GA_df()
         GA_api_df = GA_api_df.rename(columns={'dimension6': 'client_id',
                                               'dimension7': 'session_id',
-                                              'campaign': 'campaign',
-                                              'sessions': 'sessions',
                                               'dimension8': 'timestamp',
                                               'sourcemedium': 'source_medium',
                                               'goal1Completions': 'conversion',
                                               'goal1Value': 'conversion_value',
-                                              'devicecategory': 'device_category'})
+                                              'devicecategory': 'device_category',
+                                              'operatingSystem': 'operating_system'})
 
         # Be aware! Check time zones Daylight Savings Time (GA vs. MP)
         GA_api_df['timestamp'] = pd.to_datetime(GA_api_df['timestamp'], utc=True)
@@ -167,8 +165,15 @@ class DataProcessing:
 
         self.GA_df = self.GA_df[self.GA_df['client_id'].isin(clients_to_keep_df['client_id'])]
 
+    def filter_ctrl_var(self, ctrl_var=None, ctrl_var_value=None):
+        if ctrl_var is not None:
+            non_ctrl_var_df = self.GA_df[self.GA_df[ctrl_var] != ctrl_var_value]
+            ctrl_var_df = self.GA_df[(self.GA_df[ctrl_var] == ctrl_var_value) &
+                                     (~self.GA_df['client_id'].isin(non_ctrl_var_df['client_id']))]
+            self.GA_df = ctrl_var_df
+
     def drop_duplicate_sessions(self):
-        self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True)
+        self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True, inplace=True)
         self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
 
     def drop_uncommon_channels(self):
@@ -362,10 +367,11 @@ class DataProcessing:
     def get_client_mixpanel_info(self, client):
         return self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client]
 
-    def process_all(self):
+    def process_all(self, ctrl_var=None, ctrl_var_value=None):
         self.process_bq_funnel()
         self.process_individual_data()
         self.filter_cohort_sessions()
+        self.filter_ctrl_var(ctrl_var, ctrl_var_value)
         self.drop_duplicate_sessions()
         self.drop_uncommon_channels()
         self.group_by_client_id()
@@ -382,7 +388,7 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-01.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date_data = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 

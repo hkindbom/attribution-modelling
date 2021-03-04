@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from sklearn.neighbors import KernelDensity
 import matplotlib.pyplot as plt
+from sklearn.neighbors import KernelDensity
 from DataProcessing import DataProcessing
 
 
@@ -40,6 +40,31 @@ class Descriptives:
     def get_conversion_paths_not_last(self):
         conversion_paths = self.get_conversion_paths()
         return conversion_paths.loc[conversion_paths['conversion'] == 0]
+
+    def corr_metric(self, x, y):
+        cov = np.cov(x,y)[0][1]
+        return cov / (np.std(x) * np.std(y)) if cov !=0 else 0
+
+    def show_ctrl_vars_corr(self, ctrl_vars_list, threshold_corr=-1., threshold_prop=0.):
+        correlation_df = pd.DataFrame()
+        channels = self.GA_df['source_medium'].value_counts().index
+        for channel in channels:
+            ch_sessions_df = self.GA_df[self.GA_df['source_medium'] == channel]
+            channel_conv_vector = ch_sessions_df['converted_eventually'].to_numpy()
+            for ctrl_var in ctrl_vars_list:
+                ctrl_var_values = self.GA_df[ctrl_var].value_counts().index
+                for ctrl_var_value in ctrl_var_values:
+                    ctrl_vector = np.array(ch_sessions_df[ctrl_var] == ctrl_var_value).astype(int)
+                    corr_coef = self.corr_metric(channel_conv_vector, ctrl_vector)
+                    prop_ctrl_var_in_data = len(self.GA_df[self.GA_df[ctrl_var] == ctrl_var_value])/len(self.GA_df)
+                    prop_ctrl_var_in_ch = np.sum(ctrl_vector)/len(ctrl_vector)
+                    if prop_ctrl_var_in_data > threshold_prop and abs(corr_coef) > threshold_corr:
+                        result_dict = {'channel': channel, 'ctrl-var': ctrl_var, 'ctrl-var-value': ctrl_var_value,
+                                       'corr coef': corr_coef, 'prop ctrl var in data': prop_ctrl_var_in_data,
+                                       'prop ctrl variable in channel': prop_ctrl_var_in_ch}
+                        correlation_df = correlation_df.append(result_dict, ignore_index=True)
+        correlation_df = correlation_df.reindex(correlation_df['corr coef'].abs().sort_values(ascending=False).index)
+        print(correlation_df)
 
     def plot_path_length_GA(self):
         conversion_paths = self.get_conversion_paths()
@@ -149,7 +174,7 @@ class Descriptives:
         plt.ylabel('Counts')
         plt.show()
 
-    def plot_user_conversions_not_last_against_source_curve(self, column, nr_channels=3, bandwidth=10,
+    def plot_user_conversions_not_last_against_source_curve(self, column, nr_channels=3, bandwidth=10.,
                                                             transparency=0.4):
         conversion_paths_not_last_df = self.get_conversion_paths_not_last()
         channels = conversion_paths_not_last_df['source_medium'].value_counts()[:nr_channels]
@@ -206,13 +231,15 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', None)
     pd.options.display.width = 0
 
-    file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-01.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
     end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
 
     start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
     end_date_cohort = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
-    nr_top_ch = 15
+    nr_top_ch = 10
 
     descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
-    descriptives.show_interesting_results_combined()
+    #descriptives.show_interesting_results_combined()
+    ctrl_vars_list = ['device_category', 'city', 'browser', 'operating_system']
+    descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_corr=0.2, threshold_prop=0.05)
