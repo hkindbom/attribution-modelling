@@ -3,7 +3,7 @@ from tensorflow import keras
 from attention import Attention
 import numpy as np
 import pandas as pd
-from sklearn.metrics import roc_auc_score, log_loss, confusion_matrix
+from sklearn.metrics import roc_auc_score, confusion_matrix
 from ModelDataLoader import ModelDataLoader
 
 import sys
@@ -17,17 +17,18 @@ class LSTM:
         self.learning_rate = learning_rate
         self.validation_split = validation_split
         self.max_seq_len = None
-        self.nr_features = None
+        self.nr_channels = None
         self.x_train = None
         self.y_train = None
         self.x_test = None
         self.y_test = None
+        self.x_train_raw = []
 
     def setup_model(self):
         self.model = tf.keras.Sequential()
         self.model.add(tf.keras.layers.Masking(mask_value=0, input_shape=(self.x_train.shape[1], self.x_train.shape[2])))
-        self.model.add(keras.layers.LSTM(units=32))
-        #self.model.add(Attention())
+        self.model.add(keras.layers.LSTM(units=32, return_sequences=True))
+        self.model.add(Attention(name='attention_weight'))
         self.model.add(keras.layers.Dense(units=64, activation='relu'))
         self.model.add(keras.layers.Dense(units=1, activation='sigmoid'))
 
@@ -36,10 +37,11 @@ class LSTM:
                            metrics=[keras.metrics.Recall(), keras.metrics.Precision(), 'accuracy'])
 
     def load_data(self, x_train, y_train, x_test, y_test):
+        self.x_train_raw = x_train
         # sequences will be padded to the length of the longest individual sequence
         padded_x_train = self.pad_x(x_train)
         self.max_seq_len = padded_x_train.shape[1]
-        self.nr_features = len(np.unique(padded_x_train)) - 1
+        self.nr_channels = len(np.unique(padded_x_train)) - 1
 
         self.x_train = self.one_hot_encode_x(padded_x_train)
         self.y_train = np.array(y_train)
@@ -68,8 +70,62 @@ class LSTM:
         return keras.preprocessing.sequence.pad_sequences(x, maxlen=maxlen, value=-1, padding='post')
 
     def one_hot_encode_x(self, padded_data):
-        return tf.one_hot(padded_data, self.nr_features, on_value=1, off_value=0, axis=-1)
+        return tf.one_hot(padded_data, self.nr_channels, on_value=1, off_value=0, axis=-1)
 
+    def get_normalized_attributions(self):
+        unnorm_attr = self.get_non_normalized_attributions()
+        norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
+        return norm_attr
+
+    def get_non_normalized_attributions(self,):
+        non_normalized_attributions = np.zeros(self.nr_channels)
+        preds_w = self.get_preds(self.x_train)
+        for ch_idx in range(self.nr_channels):
+            x_train_w_o_ch, single_indices, ch_occur = self.remove_ch(self.x_train, ch_idx)
+            preds_w_o = self.get_preds(x_train_w_o_ch)
+
+            # correcting threshold for conversion/non-conversion
+            preds_w_o[single_indices] = 0.5
+            diff_preds = preds_w - preds_w_o
+            non_normalized_attributions[ch_idx] = max(diff_preds.sum(), 0) / ch_occur
+        return non_normalized_attributions
+
+    def remove_ch(self, x, ch_idx):
+        x = x.numpy()
+        single_indices = []
+        ch_occur = 0
+        for seq_idx, seq in enumerate(x):
+            t_p_to_del = []
+            for t_p_idx, t_p in enumerate(seq):
+                if np.argmax(t_p) == ch_idx:
+                    t_p_to_del.append(t_p_idx)
+
+            ch_occur += 1 if len(t_p_to_del) > 0 else 0
+            seq_deleted = np.delete(x[seq_idx], t_p_to_del, 0)
+            new_seq = np.concatenate((seq_deleted, np.zeros((len(t_p_to_del), self.nr_channels))), axis=0)
+            x[seq_idx] = new_seq
+
+            # identifying sequences with only one channel
+            if new_seq.max() == 0:
+                single_indices.append(seq_idx)
+        return tf.constant(x), single_indices, ch_occur
+
+    def get_attention_weights(self):
+        layer_name = 'attention_weight'
+        attention_layer_model = keras.Model(inputs=self.model.input, outputs=self.model.get_layer(layer_name).output)
+        attention_output = attention_layer_model(self.x_train)
+        return attention_output
+
+    def get_touchpoint_attr(self, seq_len):
+        attention_weights = self.get_attention_weights().numpy()
+        touchpoint_attr = np.zeros(seq_len)
+        nr_matched_seq = 0
+        for seq_idx, seq_attention in enumerate(attention_weights):
+            if self.y_train[seq_idx] == 1 and len(self.x_train_raw[seq_idx]) == seq_len:
+                touchpoint_attr += seq_attention[:seq_len]
+                nr_matched_seq += 1
+        print('Basing touchpoint attribution on ', nr_matched_seq, ' sequences')
+        return touchpoint_attr / touchpoint_attr.sum()
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
@@ -85,7 +141,7 @@ if __name__ == '__main__':
     nr_top_ch = 10
     ratio_maj_min_class = 1
     train_prop = 0.8
-    simulate = False
+    simulate = True
     cohort_size = 1000
     sim_time = 200
 
@@ -96,13 +152,16 @@ if __name__ == '__main__':
 
     x_train, y_train, x_test, y_test = data_loader.get_seq_lists_split(train_prop)
 
-    epochs = 20
+    epochs = 10
     batch_size = 20
     learning_rate = 0.001
     validation_split = 0.2
+    tp_attr_seq_len = 5
 
     lstm = LSTM(epochs, batch_size, learning_rate, validation_split)
     lstm.load_data(x_train, y_train, x_test, y_test)
     lstm.train()
+    print('Channel attributions: ', lstm.get_normalized_attributions())
+    print('Touchpoint attributions: ', lstm.get_touchpoint_attr(tp_attr_seq_len))
     print(lstm.get_results())
 

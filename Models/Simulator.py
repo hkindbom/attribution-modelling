@@ -131,14 +131,22 @@ class Simulator:
         return ch_to_idx, idx_to_ch
 
     def create_channels(self):
-        self.channels.append(Channel(0, 'fb', 10, 0.2, 0.5, 0.4))
-        self.channels.append(Channel(1, 'google', 15, 0.0, 0.0, 0.3))
-        self.ch_interact = [[1, 1.1],
-                            [1.05, 1]]
+        self.channels.append(Channel(0, 'Fb', 0, 0.1, 0.05, 0.3))
+        self.channels.append(Channel(1, 'Google cpc', 1, 0.05, 0.0, 0.2))
+        self.channels.append(Channel(2, 'Snap', 2, 0.0, 0.0, 0.3))
+        self.channels.append(Channel(3, 'Partnership', 3, 0.2, 0.4, 0.05))
+        self.channels.append(Channel(4, 'Google Organic', 4, 0.2, 0.2, 0.2))
+        self.channels.append(Channel(5, 'Direct', 5, 0.2, 0.3, 0.1))
+        self.ch_interact = [[1, 1, 1, 1, 1, 1],
+                            [1, 1, 1, 1, 1, 1],
+                            [1, 1, 1, 1, 1, 1],
+                            [1, 1, 1, 1, 1, 1],
+                            [1, 1, 1, 1, 1, 1],
+                            [1, 1, 1, 1, 1, 1]]
 
 if __name__ == '__main__':
     cohort_size = 10
-    sim_time = 200
+    sim_time = 150
 
     sim = Simulator(cohort_size, sim_time)
     sim.run_simulation()

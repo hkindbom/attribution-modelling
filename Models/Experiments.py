@@ -82,6 +82,7 @@ class Experiments:
         self.attributions['SP'] = self.SP_model.get_normalized_attributions()
         self.attributions['LTA'] = self.LTA_model.get_normalized_attributions()
         self.attributions['LR'] = self.LR_model.get_normalized_attributions()
+        self.attributions['LSTM'] = self.LSTM_model.get_normalized_attributions()
 
     def plot_attributions(self):
         channel_names = []
@@ -91,12 +92,23 @@ class Experiments:
         df = pd.DataFrame({'Channel': channel_names,
                            'LTA Attribution': self.attributions['LTA'],
                            'SP Attribution': self.attributions['SP'],
-                           'LR Attribution': self.attributions['LR']})
+                           'LR Attribution': self.attributions['LR'],
+                           'LSTM Attribution': self.attributions['LSTM']})
 
         ax = df.plot.bar(x='Channel', rot=90)
         ax.set_xlabel("Source / Medium")
         plt.tight_layout()
         plt.title('Attributions', fontsize=16)
+        plt.show()
+        self.plot_touchpoint_attributions()
+
+    def plot_touchpoint_attributions(self, max_seq_len=5):
+        for seq_len in range(2, max_seq_len+1):
+            touchpoint_attr = self.LSTM_model.get_touchpoint_attr(seq_len)
+            plt.plot(touchpoint_attr, marker='.', linewidth=2, markersize=12)
+            plt.title('Touchpoint attention attributions')
+            plt.xlabel('Touchpoint index')
+            plt.ylabel('Normalized attention')
         plt.show()
 
     def profit_eval(self, total_budget):
@@ -133,10 +145,10 @@ if __name__ == '__main__':
     total_budget = 1000
 
     simulate = False
-    cohort_size = 1000
+    cohort_size = 10000
     sim_time = 100
 
-    epochs = 20
+    epochs = 10
     batch_size = 20
     learning_rate = 0.001
 
