@@ -78,6 +78,7 @@ class Experiments:
         results_df['accuracy'] = (results_df['tp'] + results_df['tn']) / (results_df['tn'] + results_df['tp'] + results_df['fp'] + results_df['fn'])
 
         print('Theoretical max accuracy on all data is: ', self.data_loader.get_theo_max_accuracy())
+        print(results_df)
 
     def load_attributions(self):
         self.attributions['SP'] = self.SP_model.get_normalized_attributions()
