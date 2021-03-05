@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 import calendar
+import datetime as dt
 from datetime import timedelta
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
@@ -157,6 +158,19 @@ class DataProcessing:
         print('Number of unique sources in GA before filter: ', len(GA_api_df['source'].unique()))
         self.GA_df = GA_api_df
 
+    def drop_duplicate_sessions(self):
+        self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True, inplace=True)
+        self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
+
+    def add_funnel_cpc(self):
+        nr_clicks_df = self.GA_df.groupby(
+            [self.GA_df['timestamp'].dt.date, self.GA_df['source']], as_index=False).size()
+        for index, row in self.funnel_df.iterrows():
+            nr_clicks = nr_clicks_df[(nr_clicks_df['timestamp'] == row['Date']) &
+                                     (nr_clicks_df['source'] == row['Traffic_source'].lower())].iloc[0]['size']
+            self.funnel_df.loc[index, 'cpc2'] = row['Cost'] / nr_clicks
+        print(self.funnel_df)
+
     def filter_cohort_sessions(self):
         cohort_sessions_df = self.GA_df.loc[(self.GA_df['timestamp'] >= self.start_date_cohort) &
                                             (self.GA_df['timestamp'] <= self.end_date_cohort)]
@@ -171,10 +185,6 @@ class DataProcessing:
             ctrl_var_df = self.GA_df[(self.GA_df[ctrl_var] == ctrl_var_value) &
                                      (~self.GA_df['client_id'].isin(non_ctrl_var_df['client_id']))]
             self.GA_df = ctrl_var_df
-
-    def drop_duplicate_sessions(self):
-        self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True, inplace=True)
-        self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
 
     def drop_uncommon_channels(self):
         source_counts = self.GA_df['source_medium'].value_counts()
@@ -372,9 +382,10 @@ class DataProcessing:
     def process_all(self, ctrl_var=None, ctrl_var_value=None):
         self.process_bq_funnel()
         self.process_individual_data()
+        self.drop_duplicate_sessions()
+        self.add_funnel_cpc()
         self.filter_cohort_sessions()
         self.filter_ctrl_var(ctrl_var, ctrl_var_value)
-        self.drop_duplicate_sessions()
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
