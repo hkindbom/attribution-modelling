@@ -180,7 +180,9 @@ class DataProcessing:
         source_counts = self.GA_df['source_medium'].value_counts()
         if len(source_counts) <= self.nr_top_ch:
             return
-        self.GA_df = self.GA_df.groupby('source_medium').filter(lambda source: len(source) >= source_counts[self.nr_top_ch-1])
+        clients_to_remove_df = self.GA_df.groupby('source_medium').filter(
+            lambda source: len(source) < source_counts[self.nr_top_ch-1])
+        self.GA_df = self.GA_df[~self.GA_df['client_id'].isin(clients_to_remove_df['client_id'])]
 
     def balance_classes_GA(self):
         if self.ratio_maj_min_class is None:
@@ -388,7 +390,7 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-01.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-04.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date_data = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
@@ -396,6 +398,6 @@ if __name__ == '__main__':
     end_date_cohort = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
     data_processing = DataProcessing(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
-                                     file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1)
+                                     file_path_mp, nr_top_ch=10, ratio_maj_min_class=1)
     data_processing.process_all()
     GA_df = data_processing.get_GA_df()
