@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 from attention import Attention
+from lime import lime_tabular
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score, confusion_matrix
@@ -77,7 +78,31 @@ class LSTM:
         norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
         return norm_attr
 
-    def get_non_normalized_attributions(self,):
+    def get_non_normalized_attributions(self, use_lime=True):
+        if use_lime:
+            return self.get_lime_attributions()
+        return self.get_removal_attributions()
+
+    def get_lime_attributions(self):
+        print(self.x_test[0].numpy())
+        print(self.model.predict_on_batch(self.x_test[0:2].numpy()))
+        data_columns = [str(index) for index in range(self.nr_channels)]
+        explainer = lime_tabular.RecurrentTabularExplainer(self.x_train, training_labels=self.y_train,
+                                                           feature_names=data_columns,
+                                                           categorical_features=[idx for idx in range(self.nr_channels)],
+                                                           discretize_continuous=True,
+                                                           class_names=['Non-conv', 'Conv'],
+                                                           discretizer='decile')
+        exp = explainer.explain_instance(self.x_test[0].numpy(), self.model.predict_proba)#, num_features=self.nr_channels, labels=(0,))
+        print(exp.as_list(0))
+        exp.as_pyplot_figure(0)
+        import matplotlib.pyplot as plt
+        plt.show()
+        print(exp.score)
+        print(exp.local_exp)
+        #print(exp.show_in_notebook().data)
+
+    def get_removal_attributions(self):
         non_normalized_attributions = np.zeros(self.nr_channels)
         preds_w = self.get_preds(self.x_train)
         for ch_idx in range(self.nr_channels):
@@ -164,4 +189,6 @@ if __name__ == '__main__':
     print('Channel attributions: ', lstm.get_normalized_attributions())
     print('Touchpoint attributions: ', lstm.get_touchpoint_attr(tp_attr_seq_len))
     print(lstm.get_results())
+
+
 
