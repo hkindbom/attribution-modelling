@@ -7,7 +7,6 @@ from LTA import LTA
 from LR import LR
 from LSTM import LSTM
 
-
 class Experiments:
 
     def __init__(self, start_date_data, end_date_data, start_date_cohort, end_date_cohort,
@@ -42,10 +41,8 @@ class Experiments:
 
     def load_data(self):
         self.clients_data_train, self.clients_data_test = self.data_loader.get_clients_dict_split(self.train_prop)
-        self.x_train, self.y_train, self.x_test, self.y_test = self.data_loader.get_feature_matrix_split(
-            self.train_prop, self.use_time)
-        self.seq_lists_train, self.labels_train, self.seq_lists_test, self.labels_test = self.data_loader.get_seq_lists_split(
-            self.train_prop)
+        self.x_train, self.y_train, self.x_test, self.y_test = self.data_loader.get_feature_matrix_split(self.train_prop, self.use_time)
+        self.seq_lists_train, self.labels_train, self.seq_lists_test, self.labels_test = self.data_loader.get_seq_lists_split(self.train_prop)
 
         self.SP_model.load_train_test_data(self.clients_data_train, self.clients_data_test)
         self.LTA_model.load_train_test_data(self.clients_data_train, self.clients_data_test)
@@ -77,10 +74,8 @@ class Experiments:
 
         results_df['precision'] = results_df['tp'] / (results_df['tp'] + results_df['fp'])
         results_df['recall'] = results_df['tp'] / (results_df['tp'] + results_df['fn'])
-        results_df['F1'] = 2 * results_df['precision'] * results_df['recall'] / (
-                    results_df['precision'] + results_df['recall'])
-        results_df['accuracy'] = (results_df['tp'] + results_df['tn']) / (
-                    results_df['tn'] + results_df['tp'] + results_df['fp'] + results_df['fn'])
+        results_df['F1'] = 2 * results_df['precision'] * results_df['recall'] / (results_df['precision'] + results_df['recall'])
+        results_df['accuracy'] = (results_df['tp'] + results_df['tn']) / (results_df['tn'] + results_df['tp'] + results_df['fp'] + results_df['fn'])
 
         print('Theoretical max accuracy on all data is: ', self.data_loader.get_theo_max_accuracy())
         print(results_df)
@@ -108,8 +103,8 @@ class Experiments:
                            'SP Attribution': self.attributions['SP'],
                            'LR Attribution': self.attributions['LR'],
                            'LSTM Attribution': self.attributions['LSTM']})
-        ax = df.plot.bar(x='Channel', rot=90)
 
+        ax = df.plot.bar(x='Channel', rot=90)
         if print_sum_attr:
             ax.legend(['LTA Attribution (sum ' + str(round(self.load_non_norm_attributions()['LTA'], 2)) + ')',
                        'SP Attribution (sum ' + str(round(self.load_non_norm_attributions()['SP'], 2)) + ')',
@@ -122,7 +117,7 @@ class Experiments:
         self.plot_touchpoint_attributions()
 
     def plot_touchpoint_attributions(self, max_seq_len=5):
-        for seq_len in range(2, max_seq_len + 1):
+        for seq_len in range(2, max_seq_len+1):
             touchpoint_attr = self.LSTM_model.get_touchpoint_attr(seq_len)
             plt.plot(touchpoint_attr, marker='.', linewidth=2, markersize=12)
             plt.title('Touchpoint attention attributions')
@@ -139,8 +134,7 @@ class Experiments:
 
         eval_results_df = pd.DataFrame()
         for model_name in self.attributions:
-            evaluation = Evaluation(GA_df, converted_clients_df, total_budget, self.attributions[model_name],
-                                    self.ch_to_idx)
+            evaluation = Evaluation(GA_df, converted_clients_df, total_budget, self.attributions[model_name], self.ch_to_idx)
             results = evaluation.evaluate()
             results['model'] = model_name
             eval_results_df = eval_results_df.append(results, ignore_index=True)
