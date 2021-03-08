@@ -16,8 +16,7 @@ class Experiments:
 
         self.data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                                            file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size,
-                                           sim_time,
-                                           ctrl_var, ctrl_var_value)
+                                           sim_time, ctrl_var, ctrl_var_value)
         self.use_time = use_time
         self.simulate = simulate
         self.SP_model = SP()
@@ -97,12 +96,7 @@ class Experiments:
         LTA_non_norm = self.LTA_model.get_non_normalized_attributions()
         LR_non_norm = self.LR_model.get_coefs()
         LSTM_non_norm = self.LSTM_model.get_non_normalized_attributions()
-        sum_non_norm = sum(SP_non_norm) + sum(LTA_non_norm) + sum(LR_non_norm) + sum(LSTM_non_norm)
-        return SP_non_norm, LTA_non_norm, LR_non_norm, LSTM_non_norm, sum_non_norm
-
-    def show_total_attr_value(self):
-        sum_non_norm = self.load_non_norm_attributions()[-1]
-        print('Non-normalized attributions sum to', round(sum_non_norm, 2))
+        return {'SP': sum(SP_non_norm), 'LTA': sum(LTA_non_norm), 'LR': sum(LR_non_norm), 'LSTM': sum(LSTM_non_norm)}
 
     def plot_attributions(self, print_sum_attr=True):
         channel_names = []
@@ -114,14 +108,16 @@ class Experiments:
                            'SP Attribution': self.attributions['SP'],
                            'LR Attribution': self.attributions['LR'],
                            'LSTM Attribution': self.attributions['LSTM']})
-
         ax = df.plot.bar(x='Channel', rot=90)
+
+        if print_sum_attr:
+            ax.legend(['LTA Attribution (sum ' + str(round(self.load_non_norm_attributions()['LTA'], 2)) + ')',
+                       'SP Attribution (sum ' + str(round(self.load_non_norm_attributions()['SP'], 2)) + ')',
+                       'LR Attribution (sum ' + str(round(self.load_non_norm_attributions()['LR'], 2)) + ')',
+                       'LSTM Attribution (sum ' + str(round(self.load_non_norm_attributions()['LSTM'], 2)) + ')'])
         ax.set_xlabel("Source / Medium")
         plt.tight_layout()
-        sum_str = ''
-        if print_sum_attr:
-            sum_str = ' (values sum to ' + str(round(self.load_non_norm_attributions()[-1], 2)) + ')'
-        plt.title('Attributions' + sum_str, fontsize=16)
+        plt.title('Attributions', fontsize=16)
         plt.show()
         self.plot_touchpoint_attributions()
 
@@ -187,6 +183,5 @@ if __name__ == '__main__':
     experiments.train_all()
     experiments.load_attributions()
     experiments.validate_pred()
-    experiments.show_total_attr_value()
     experiments.plot_attributions(print_sum_attr=True)
     experiments.profit_eval(total_budget)

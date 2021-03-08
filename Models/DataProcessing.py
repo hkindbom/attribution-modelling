@@ -1,5 +1,4 @@
 import pandas as pd
-import datetime as dt
 from datetime import timedelta
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
