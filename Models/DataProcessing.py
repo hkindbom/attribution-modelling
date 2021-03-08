@@ -143,10 +143,10 @@ class DataProcessing:
         nr_clicks_df = self.change_name_click_ch(nr_clicks_df)
 
         for index, row in self.funnel_df.iterrows():
-            nr_clicks_df = nr_clicks_df[(nr_clicks_df['timestamp'] == row['Date']) &
+            ch_nr_clicks_df = nr_clicks_df[(nr_clicks_df['timestamp'] == row['Date']) &
                                      (nr_clicks_df['source_medium'] == row['Traffic_source'].lower())]
-            if not nr_clicks_df.empty:
-                nr_clicks = nr_clicks_df.iloc[0]['size']
+            if not ch_nr_clicks_df.empty:
+                nr_clicks = ch_nr_clicks_df.iloc[0]['size']
                 self.funnel_df.loc[index, 'cpc'] = row['Cost'] / nr_clicks
 
     def change_name_click_ch(self, nr_clicks_df):
@@ -332,7 +332,7 @@ class DataProcessing:
                                                           + client['nr_co_insured'] * w_nr_co_insured
 
     def assign_cost(self, free_mediums):
-        costs_df = pd.read_csv('../Data/costs.csv')
+        costs_df = pd.read_csv('../Data/commission_costs.csv')
         self.GA_df['cost'] = 0
         paid_click_sessions_df = self.GA_df.loc[~self.GA_df['source_medium'].str.contains('|'.join(free_mediums))]
         for cust_id, session in paid_click_sessions_df.iterrows():
@@ -347,15 +347,15 @@ class DataProcessing:
         commission_df = costs_df[costs_df['channel'] == session['source']]
         if not commission_df.empty:
             commission_type = commission_df.iloc[0]['type']
-            if commission_type == 'Monthly fixed':
+            if commission_type == 'fixed monthly':
                 avg_nr_clicks_monthly = self.avg_nr_clicks_monthly(session['source'])
-                return commission_df.iloc[0]['size'] / avg_nr_clicks_monthly
+                return commission_df.iloc[0]['value'] / avg_nr_clicks_monthly
             if session['conversion'] == 1:
-                if commission_type == 'Fixed one-time':
-                    return commission_df.iloc[0]['size']
-                if commission_type == 'Yearly percentage':
+                if commission_type == 'fixed one-time':
+                    return commission_df.iloc[0]['value']
+                if commission_type == 'percentage yearly':
                     yearly_premium = 12 * session['conversion_value']
-                    return yearly_premium * commission_df.iloc[0]['size']/100
+                    return yearly_premium * commission_df.iloc[0]['value']/100
         return 0
 
     def avg_nr_clicks_monthly(self, channel):
@@ -364,7 +364,7 @@ class DataProcessing:
         source_counts = only_cohort_df['source'].value_counts()
         nr_days = (self.end_date_cohort - self.start_date_cohort).days
         avg_clicks_daily = source_counts[channel] / nr_days
-        return 30.44 * avg_clicks_daily
+        return 30.44 * avg_clicks_daily  # avg. nr days per calendar month
 
     def process_bq_funnel(self):
         bq_processor = ApiDataBigQuery(self.start_date_data, self.end_date_data)
