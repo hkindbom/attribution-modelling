@@ -44,14 +44,8 @@ class ApiDataBigQuery:
 
             self.funnel_df = self.funnel_df.append(bqclient.query(query_string).result()
                                                    .to_dataframe(bqstorage_client=bqstorageclient))
-
-        self.add_cost_per_click()
         print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel (in ',
               len(month_intervals), ' querys)')
-
-    def add_cost_per_click(self):
-        self.funnel_df['cpc'] = self.funnel_df['Cost'] / self.funnel_df['Clicks']
-        self.funnel_df.loc[~np.isfinite(self.funnel_df['cpc']), 'cpc'] = np.nan  # Handle div by 0
 
     def get_funnel_df(self):
         return self.funnel_df
@@ -163,13 +157,23 @@ class DataProcessing:
         self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
 
     def add_funnel_cpc(self):
+        self.funnel_df['cpc'] = 0
         nr_clicks_df = self.GA_df.groupby(
-            [self.GA_df['timestamp'].dt.date, self.GA_df['source']], as_index=False).size()
+            [self.GA_df['timestamp'].dt.date, self.GA_df['source_medium']], as_index=False).size()
+        nr_clicks_df = self.change_name_click_ch(nr_clicks_df)
+
         for index, row in self.funnel_df.iterrows():
             nr_clicks = nr_clicks_df[(nr_clicks_df['timestamp'] == row['Date']) &
-                                     (nr_clicks_df['source'] == row['Traffic_source'].lower())].iloc[0]['size']
-            self.funnel_df.loc[index, 'cpc2'] = row['Cost'] / nr_clicks
-        print(self.funnel_df)
+                                     (nr_clicks_df['source_medium'] == row['Traffic_source'].lower())].iloc[0]['size']
+            self.funnel_df.loc[index, 'cpc'] = row['Cost'] / nr_clicks
+
+    def change_name_click_ch(self, nr_clicks_df):
+        ch_rename_dict = {'google / cpc': 'google',
+                          'facebook / ad': 'facebook',
+                          'snapchat / ad': 'snapchat',
+                          'tiktok / ad': 'tiktok'}
+        nr_clicks_df['source_medium'] = nr_clicks_df['source_medium'].replace(ch_rename_dict)
+        return nr_clicks_df
 
     def filter_cohort_sessions(self):
         cohort_sessions_df = self.GA_df.loc[(self.GA_df['timestamp'] >= self.start_date_cohort) &
