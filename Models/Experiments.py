@@ -7,6 +7,7 @@ from LTA import LTA
 from LR import LR
 from LSTM import LSTM
 
+
 class Experiments:
 
     def __init__(self, start_date_data, end_date_data, start_date_cohort, end_date_cohort,
@@ -14,7 +15,8 @@ class Experiments:
                  cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var, ctrl_var_value):
 
         self.data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
-                                           file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size, sim_time,
+                                           file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size,
+                                           sim_time,
                                            ctrl_var, ctrl_var_value)
         self.use_time = use_time
         self.simulate = simulate
@@ -41,8 +43,10 @@ class Experiments:
 
     def load_data(self):
         self.clients_data_train, self.clients_data_test = self.data_loader.get_clients_dict_split(self.train_prop)
-        self.x_train, self.y_train, self.x_test, self.y_test = self.data_loader.get_feature_matrix_split(self.train_prop, self.use_time)
-        self.seq_lists_train, self.labels_train, self.seq_lists_test, self.labels_test = self.data_loader.get_seq_lists_split(self.train_prop)
+        self.x_train, self.y_train, self.x_test, self.y_test = self.data_loader.get_feature_matrix_split(
+            self.train_prop, self.use_time)
+        self.seq_lists_train, self.labels_train, self.seq_lists_test, self.labels_test = self.data_loader.get_seq_lists_split(
+            self.train_prop)
 
         self.SP_model.load_train_test_data(self.clients_data_train, self.clients_data_test)
         self.LTA_model.load_train_test_data(self.clients_data_train, self.clients_data_test)
@@ -74,8 +78,10 @@ class Experiments:
 
         results_df['precision'] = results_df['tp'] / (results_df['tp'] + results_df['fp'])
         results_df['recall'] = results_df['tp'] / (results_df['tp'] + results_df['fn'])
-        results_df['F1'] = 2 * results_df['precision'] * results_df['recall'] / (results_df['precision'] + results_df['recall'])
-        results_df['accuracy'] = (results_df['tp'] + results_df['tn']) / (results_df['tn'] + results_df['tp'] + results_df['fp'] + results_df['fn'])
+        results_df['F1'] = 2 * results_df['precision'] * results_df['recall'] / (
+                    results_df['precision'] + results_df['recall'])
+        results_df['accuracy'] = (results_df['tp'] + results_df['tn']) / (
+                    results_df['tn'] + results_df['tp'] + results_df['fp'] + results_df['fn'])
 
         print('Theoretical max accuracy on all data is: ', self.data_loader.get_theo_max_accuracy())
         print(results_df)
@@ -86,7 +92,19 @@ class Experiments:
         self.attributions['LR'] = self.LR_model.get_normalized_attributions()
         self.attributions['LSTM'] = self.LSTM_model.get_normalized_attributions()
 
-    def plot_attributions(self):
+    def load_non_norm_attributions(self):
+        SP_non_norm = self.SP_model.get_non_normalized_attributions()
+        LTA_non_norm = self.LTA_model.get_non_normalized_attributions()
+        LR_non_norm = self.LR_model.get_coefs()
+        LSTM_non_norm = self.LSTM_model.get_non_normalized_attributions()
+        sum_non_norm = sum(SP_non_norm) + sum(LTA_non_norm) + sum(LR_non_norm) + sum(LSTM_non_norm)
+        return SP_non_norm, LTA_non_norm, LR_non_norm, LSTM_non_norm, sum_non_norm
+
+    def show_total_attr_value(self):
+        sum_non_norm = self.load_non_norm_attributions()[-1]
+        print('Non-normalized attributions sum to', round(sum_non_norm, 2))
+
+    def plot_attributions(self, print_sum_attr=True):
         channel_names = []
         for ch_idx in range(len(self.idx_to_ch)):
             channel_names.append(self.idx_to_ch[ch_idx])
@@ -100,12 +118,15 @@ class Experiments:
         ax = df.plot.bar(x='Channel', rot=90)
         ax.set_xlabel("Source / Medium")
         plt.tight_layout()
-        plt.title('Attributions', fontsize=16)
+        sum_str = ''
+        if print_sum_attr:
+            sum_str = ' (values sum to ' + str(round(self.load_non_norm_attributions()[-1], 2)) + ')'
+        plt.title('Attributions' + sum_str, fontsize=16)
         plt.show()
         self.plot_touchpoint_attributions()
 
     def plot_touchpoint_attributions(self, max_seq_len=5):
-        for seq_len in range(2, max_seq_len+1):
+        for seq_len in range(2, max_seq_len + 1):
             touchpoint_attr = self.LSTM_model.get_touchpoint_attr(seq_len)
             plt.plot(touchpoint_attr, marker='.', linewidth=2, markersize=12)
             plt.title('Touchpoint attention attributions')
@@ -122,18 +143,19 @@ class Experiments:
 
         eval_results_df = pd.DataFrame()
         for model_name in self.attributions:
-            evaluation = Evaluation(GA_df, converted_clients_df, total_budget, self.attributions[model_name], self.ch_to_idx)
+            evaluation = Evaluation(GA_df, converted_clients_df, total_budget, self.attributions[model_name],
+                                    self.ch_to_idx)
             results = evaluation.evaluate()
             results['model'] = model_name
             eval_results_df = eval_results_df.append(results, ignore_index=True)
         print(eval_results_df)
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-01.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-04.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date_data = pd.Timestamp(year=2021, month=2, day=28, hour=23, minute=59, tz='UTC')
 
@@ -165,5 +187,6 @@ if __name__ == '__main__':
     experiments.train_all()
     experiments.load_attributions()
     experiments.validate_pred()
-    experiments.plot_attributions()
+    experiments.show_total_attr_value()
+    experiments.plot_attributions(print_sum_attr=True)
     experiments.profit_eval(total_budget)
