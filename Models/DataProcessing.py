@@ -20,32 +20,14 @@ class ApiDataBigQuery:
         bqclient = bigquery.Client(credentials=credentials, project=credentials.project_id)
         bqstorageclient = bigquery_storage.BigQueryReadClient(credentials=credentials)
 
-        start_date_temp = self.start_date.replace(day=1)
-        month_intervals = pd.date_range(start_date_temp.date(), self.end_date.date(), freq='MS', normalize=True).tolist()
-        for month_period in month_intervals:
-            if month_period == month_intervals[0]:
-                query_start_date = f"{self.start_date.year}, {self.start_date.month}, {self.start_date.day}"
+        query_string = f"SELECT Date, Traffic_source, Data_Source_type, Cost, Clicks, Impressions \
+                       FROM funnel-248216.marketing_spend.all_funnel_data_view \
+                       WHERE Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day}) \
+                       AND Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) \
+                       AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"
 
-            else:
-                query_start_date = f"{month_period.year}, {month_period.month}, {1}"
-
-            if month_period == month_intervals[-1]:
-                query_end_date = f"{self.end_date.year}, {self.end_date.month}, {self.end_date.day}"
-
-            else:
-                query_end_date = f"{month_period.year}, {month_period.month}, " \
-                                 f"{calendar.monthrange(month_period.year, month_period.month)[1]}"
-
-            query_string = f"SELECT Date, Traffic_source, Data_Source_type, Cost, Clicks, Impressions \
-                           FROM funnel-248216.marketing_spend.marketing_spend_monthly_{month_period.year}_{str(month_period.month).zfill(2)} \
-                           WHERE Date >= DATE ({query_start_date}) \
-                           AND Date <= DATE ({query_end_date}) \
-                           AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"
-
-            self.funnel_df = self.funnel_df.append(bqclient.query(query_string).result()
-                                                   .to_dataframe(bqstorage_client=bqstorageclient))
-        print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel (in ',
-              len(month_intervals), ' querys)')
+        self.funnel_df = bqclient.query(query_string).result().to_dataframe(bqstorage_client=bqstorageclient)
+        print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel')
 
     def get_funnel_df(self):
         return self.funnel_df
