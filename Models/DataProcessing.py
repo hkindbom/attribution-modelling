@@ -1,6 +1,4 @@
 import pandas as pd
-import numpy as np
-import calendar
 import datetime as dt
 from datetime import timedelta
 from googleapiclient.discovery import build
@@ -145,9 +143,11 @@ class DataProcessing:
         nr_clicks_df = self.change_name_click_ch(nr_clicks_df)
 
         for index, row in self.funnel_df.iterrows():
-            nr_clicks = nr_clicks_df[(nr_clicks_df['timestamp'] == row['Date']) &
-                                     (nr_clicks_df['source_medium'] == row['Traffic_source'].lower())].iloc[0]['size']
-            self.funnel_df.loc[index, 'cpc'] = row['Cost'] / nr_clicks
+            nr_clicks_df = nr_clicks_df[(nr_clicks_df['timestamp'] == row['Date']) &
+                                     (nr_clicks_df['source_medium'] == row['Traffic_source'].lower())]
+            if not nr_clicks_df.empty:
+                nr_clicks = nr_clicks_df.iloc[0]['size']
+                self.funnel_df.loc[index, 'cpc'] = row['Cost'] / nr_clicks
 
     def change_name_click_ch(self, nr_clicks_df):
         ch_rename_dict = {'google / cpc': 'google',
@@ -389,7 +389,7 @@ if __name__ == '__main__':
 
     file_path_mp = '../Data/Mixpanel_data_2021-03-04.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=3, day=2, hour=23, minute=59, tz='UTC')
 
     start_date_cohort = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date_cohort = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
