@@ -2,6 +2,7 @@ import tensorflow as tf
 from tensorflow import keras
 from attention import Attention
 from lime import lime_tabular
+import shap
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score, confusion_matrix
@@ -78,29 +79,26 @@ class LSTM:
         norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
         return norm_attr
 
-    def get_non_normalized_attributions(self, use_lime=True):
-        if use_lime:
-            return self.get_lime_attributions()
+    def get_non_normalized_attributions(self, use_shap=True):
+        if use_shap:
+            return self.get_shap_attributions()
         return self.get_removal_attributions()
 
-    def get_lime_attributions(self):
-        print(self.x_test[0].numpy())
-        print(self.model.predict_on_batch(self.x_test[0:2].numpy()))
-        data_columns = [str(index) for index in range(self.nr_channels)]
-        explainer = lime_tabular.RecurrentTabularExplainer(self.x_train, training_labels=self.y_train,
-                                                           feature_names=data_columns,
-                                                           categorical_features=[idx for idx in range(self.nr_channels)],
-                                                           discretize_continuous=True,
-                                                           class_names=['Non-conv', 'Conv'],
-                                                           discretizer='decile')
-        exp = explainer.explain_instance(self.x_test[0].numpy(), self.model.predict_proba)#, num_features=self.nr_channels, labels=(0,))
-        print(exp.as_list(0))
-        exp.as_pyplot_figure(0)
-        import matplotlib.pyplot as plt
-        plt.show()
-        print(exp.score)
-        print(exp.local_exp)
-        #print(exp.show_in_notebook().data)
+    def get_shap_attributions(self):
+        explainer = shap.GradientExplainer(self.model, self.x_train.numpy())
+        shap_values = explainer.shap_values(self.x_train.numpy())
+        return self.shap_values_to_attr(shap_values[0])
+
+    def shap_values_to_attr(self, all_shap_values):
+        shap_attributions = np.zeros(self.nr_channels)
+        ch_counts = np.ones(self.nr_channels)
+        for seq_idx, shap_values_seq in enumerate(all_shap_values):
+            for channel_idx, shap_values_tp in zip(self.x_train_raw[seq_idx], shap_values_seq):
+                shap_attributions[channel_idx] += shap_values_tp[channel_idx]
+                ch_counts[channel_idx] += 1
+        shap_attributions[shap_attributions < 0] = 0
+        shap_attributions /= ch_counts
+        return shap_attributions.tolist()
 
     def get_removal_attributions(self):
         non_normalized_attributions = np.zeros(self.nr_channels)
@@ -177,7 +175,7 @@ if __name__ == '__main__':
 
     x_train, y_train, x_test, y_test = data_loader.get_seq_lists_split(train_prop)
 
-    epochs = 10
+    epochs = 2
     batch_size = 20
     learning_rate = 0.001
     validation_split = 0.2
