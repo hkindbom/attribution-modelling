@@ -73,8 +73,8 @@ class LSTM:
     def one_hot_encode_x(self, padded_data):
         return tf.one_hot(padded_data, self.nr_channels, on_value=1, off_value=0, axis=-1)
 
-    def get_normalized_attributions(self):
-        unnorm_attr = self.get_non_normalized_attributions()
+    def get_normalized_attributions(self, use_shap=True):
+        unnorm_attr = self.get_non_normalized_attributions(use_shap)
         norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
         return norm_attr
 
