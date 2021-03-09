@@ -1,7 +1,6 @@
 import tensorflow as tf
 from tensorflow import keras
 from attention import Attention
-from lime import lime_tabular
 import shap
 import numpy as np
 import pandas as pd
@@ -175,7 +174,7 @@ if __name__ == '__main__':
 
     x_train, y_train, x_test, y_test = data_loader.get_seq_lists_split(train_prop)
 
-    epochs = 2
+    epochs = 10
     batch_size = 20
     learning_rate = 0.001
     validation_split = 0.2
