@@ -48,8 +48,15 @@ class Experiments:
                     seq_lists_train, labels_train, seq_lists_test, labels_test)
 
             self.train_all()
-            self.collect_models_stats()
+            self.collect_models_pred_stats()
             self.collect_models_attr(nr_splits, split_idx)
+        self.show_cv_results()
+
+    def show_cv_results(self):
+        self.calc_mean_and_std()
+
+    def calc_mean_and_std(self):
+        pass
 
     def collect_models_attr(self, nr_splits, split_idx):
         models_attr_dict = self.load_attributions(output=True)
@@ -58,13 +65,13 @@ class Experiments:
                 self.model_stats[models_name]['attributions'] = np.zeros((nr_splits, len(self.ch_to_idx)))
             self.model_stats[models_name]['attributions'][split_idx] = np.array(models_attr_dict[models_name])
 
-    def collect_models_stats(self):
+    def collect_models_pred_stats(self):
         models_res, theo_max_accuracy = self.validate_pred(output=True)
         for model_res in models_res:
-            self.collect_model_stats(model_res['model'], model_res)
+            self.collect_model_pred_stats(model_res['model'], model_res)
         print(self.model_stats)
 
-    def collect_model_stats(self, model_name, model_stats):
+    def collect_model_pred_stats(self, model_name, model_stats):
         if model_name not in self.model_stats:
             self.model_stats[model_name] = {}
             for model_stat in model_stats:
