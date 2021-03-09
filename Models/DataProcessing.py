@@ -1,6 +1,4 @@
 import pandas as pd
-import numpy as np
-import calendar
 from datetime import timedelta
 from googleapiclient.discovery import build
 from oauth2client.service_account import ServiceAccountCredentials
@@ -19,38 +17,14 @@ class ApiDataBigQuery:
         bqclient = bigquery.Client(credentials=credentials, project=credentials.project_id)
         bqstorageclient = bigquery_storage.BigQueryReadClient(credentials=credentials)
 
-        start_date_temp = self.start_date.replace(day=1)
-        month_intervals = pd.date_range(start_date_temp.date(), self.end_date.date(), freq='MS', normalize=True).tolist()
-        for month_period in month_intervals:
-            if month_period == month_intervals[0]:
-                query_start_date = f"{self.start_date.year}, {self.start_date.month}, {self.start_date.day}"
+        query_string = f"SELECT Date, Traffic_source, Data_Source_type, Cost, Clicks, Impressions \
+                       FROM funnel-248216.marketing_spend.all_funnel_data_view \
+                       WHERE Date >= DATE ({self.start_date.year}, {self.start_date.month}, {self.start_date.day}) \
+                       AND Date <= DATE ({self.end_date.year}, {self.end_date.month}, {self.end_date.day}) \
+                       AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"
 
-            else:
-                query_start_date = f"{month_period.year}, {month_period.month}, {1}"
-
-            if month_period == month_intervals[-1]:
-                query_end_date = f"{self.end_date.year}, {self.end_date.month}, {self.end_date.day}"
-
-            else:
-                query_end_date = f"{month_period.year}, {month_period.month}, " \
-                                 f"{calendar.monthrange(month_period.year, month_period.month)[1]}"
-
-            query_string = f"SELECT Date, Traffic_source, Data_Source_type, Cost, Clicks, Impressions \
-                           FROM funnel-248216.marketing_spend.marketing_spend_monthly_{month_period.year}_{str(month_period.month).zfill(2)} \
-                           WHERE Date >= DATE ({query_start_date}) \
-                           AND Date <= DATE ({query_end_date}) \
-                           AND (Campaign_name__TikTok NOT LIKE '%no%' OR Campaign_name__TikTok IS NULL)"
-
-            self.funnel_df = self.funnel_df.append(bqclient.query(query_string).result()
-                                                   .to_dataframe(bqstorage_client=bqstorageclient))
-
-        self.add_cost_per_click()
-        print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel (in ',
-              len(month_intervals), ' querys)')
-
-    def add_cost_per_click(self):
-        self.funnel_df['cpc'] = self.funnel_df['Cost'] / self.funnel_df['Clicks']
-        self.funnel_df.loc[~np.isfinite(self.funnel_df['cpc']), 'cpc'] = np.nan  # Handle div by 0
+        self.funnel_df = bqclient.query(query_string).result().to_dataframe(bqstorage_client=bqstorageclient)
+        print('Read ', len(self.funnel_df), ' datapoints from BigQuery Funnel')
 
     def get_funnel_df(self):
         return self.funnel_df
@@ -157,6 +131,31 @@ class DataProcessing:
         print('Number of unique sources in GA before filter: ', len(GA_api_df['source'].unique()))
         self.GA_df = GA_api_df
 
+    def drop_duplicate_sessions(self):
+        self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True, inplace=True)
+        self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
+
+    def add_funnel_cpc(self):
+        self.funnel_df['cpc'] = 0
+        nr_clicks_df = self.GA_df.groupby(
+            [self.GA_df['timestamp'].dt.date, self.GA_df['source_medium']], as_index=False).size()
+        nr_clicks_df = self.change_name_click_ch(nr_clicks_df)
+
+        for index, row in self.funnel_df.iterrows():
+            ch_nr_clicks_df = nr_clicks_df[(nr_clicks_df['timestamp'] == row['Date']) &
+                                     (nr_clicks_df['source_medium'] == row['Traffic_source'].lower())]
+            if not ch_nr_clicks_df.empty:
+                nr_clicks = ch_nr_clicks_df.iloc[0]['size']
+                self.funnel_df.loc[index, 'cpc'] = row['Cost'] / nr_clicks
+
+    def change_name_click_ch(self, nr_clicks_df):
+        ch_rename_dict = {'google / cpc': 'google',
+                          'facebook / ad': 'facebook',
+                          'snapchat / ad': 'snapchat',
+                          'tiktok / ad': 'tiktok'}
+        nr_clicks_df['source_medium'] = nr_clicks_df['source_medium'].replace(ch_rename_dict)
+        return nr_clicks_df
+
     def filter_cohort_sessions(self):
         cohort_sessions_df = self.GA_df.loc[(self.GA_df['timestamp'] >= self.start_date_cohort) &
                                             (self.GA_df['timestamp'] <= self.end_date_cohort)]
@@ -172,15 +171,13 @@ class DataProcessing:
                                      (~self.GA_df['client_id'].isin(non_ctrl_var_df['client_id']))]
             self.GA_df = ctrl_var_df
 
-    def drop_duplicate_sessions(self):
-        self.GA_df.sort_values(by=['client_id', 'timestamp'], ascending=True, inplace=True)
-        self.GA_df = self.GA_df.drop_duplicates(subset=['client_id', 'session_id'], keep='last')
-
     def drop_uncommon_channels(self):
         source_counts = self.GA_df['source_medium'].value_counts()
         if len(source_counts) <= self.nr_top_ch:
             return
-        self.GA_df = self.GA_df.groupby('source_medium').filter(lambda source: len(source) >= source_counts[self.nr_top_ch-1])
+        clients_to_remove_df = self.GA_df.groupby('source_medium').filter(
+            lambda source: len(source) < source_counts[self.nr_top_ch-1])
+        self.GA_df = self.GA_df[~self.GA_df['client_id'].isin(clients_to_remove_df['client_id'])]
 
     def balance_classes_GA(self):
         if self.ratio_maj_min_class is None:
@@ -337,10 +334,36 @@ class DataProcessing:
         self.GA_df['cost'] = 0
         paid_click_sessions_df = self.GA_df.loc[~self.GA_df['source_medium'].str.contains('|'.join(free_mediums))]
         for cust_id, session in paid_click_sessions_df.iterrows():
-            marketing_spend_series = self.funnel_df.loc[(self.funnel_df['Date'] == session['timestamp'].date()) &
-                                                   (self.funnel_df['Traffic_source'].str.lower() == session['source'])]
-            if not marketing_spend_series.empty:
-                self.GA_df.loc[cust_id, 'cost'] = marketing_spend_series.iloc[0]['cpc']
+            marketing_spend_df = self.funnel_df.loc[(self.funnel_df['Date'] == session['timestamp'].date()) &
+                                                    (self.funnel_df['Traffic_source'].str.lower() == session['source'])]
+            if not marketing_spend_df.empty:
+                self.GA_df.loc[cust_id, 'cost'] = marketing_spend_df.iloc[0]['cpc']
+            else:
+                self.GA_df.loc[cust_id, 'cost'] = self.assign_commission_cost(session)
+
+    def assign_commission_cost(self, session):
+        costs_df = pd.read_csv('../Data/commission_costs.csv')
+        commission_df = costs_df[costs_df['channel'] == session['source']]
+        if not commission_df.empty:
+            commission_type = commission_df.iloc[0]['type']
+            if commission_type == 'fixed monthly':
+                avg_nr_clicks_monthly = self.avg_nr_clicks_monthly(session['source'])
+                return commission_df.iloc[0]['value'] / avg_nr_clicks_monthly
+            if session['conversion'] == 1:
+                if commission_type == 'fixed one-time':
+                    return commission_df.iloc[0]['value']
+                if commission_type == 'percentage yearly':
+                    yearly_premium = 12 * session['conversion_value']
+                    return yearly_premium * commission_df.iloc[0]['value']/100
+        return 0
+
+    def avg_nr_clicks_monthly(self, channel):
+        only_cohort_df = self.GA_df.loc[(self.GA_df['timestamp'] >= self.start_date_cohort) &
+                                        (self.GA_df['timestamp'] <= self.end_date_cohort)]
+        source_counts = only_cohort_df['source'].value_counts()
+        nr_days = (self.end_date_cohort - self.start_date_cohort).days
+        avg_clicks_daily = source_counts[channel] / nr_days
+        return 365/12 * avg_clicks_daily
 
     def process_bq_funnel(self):
         bq_processor = ApiDataBigQuery(self.start_date_data, self.end_date_data)
@@ -370,9 +393,10 @@ class DataProcessing:
     def process_all(self, ctrl_var=None, ctrl_var_value=None):
         self.process_bq_funnel()
         self.process_individual_data()
+        self.drop_duplicate_sessions()
+        self.add_funnel_cpc()
         self.filter_cohort_sessions()
         self.filter_ctrl_var(ctrl_var, ctrl_var_value)
-        self.drop_duplicate_sessions()
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
@@ -388,14 +412,14 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-01.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-04.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=3, day=2, hour=23, minute=59, tz='UTC')
 
     start_date_cohort = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date_cohort = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
 
     data_processing = DataProcessing(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
-                                     file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1)
+                                     file_path_mp, nr_top_ch=10, ratio_maj_min_class=1)
     data_processing.process_all()
     GA_df = data_processing.get_GA_df()

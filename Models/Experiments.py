@@ -14,8 +14,8 @@ class Experiments:
                  cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var, ctrl_var_value):
 
         self.data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
-                                           file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size, sim_time,
-                                           ctrl_var, ctrl_var_value)
+                                           file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size,
+                                           sim_time, ctrl_var, ctrl_var_value)
         self.use_time = use_time
         self.simulate = simulate
         self.SP_model = SP()
@@ -86,7 +86,14 @@ class Experiments:
         self.attributions['LR'] = self.LR_model.get_normalized_attributions()
         self.attributions['LSTM'] = self.LSTM_model.get_normalized_attributions()
 
-    def plot_attributions(self):
+    def load_non_norm_attributions(self):
+        SP_non_norm = self.SP_model.get_non_normalized_attributions()
+        LTA_non_norm = self.LTA_model.get_non_normalized_attributions()
+        LR_non_norm = self.LR_model.get_coefs()
+        LSTM_non_norm = self.LSTM_model.get_non_normalized_attributions()
+        return {'SP': sum(SP_non_norm), 'LTA': sum(LTA_non_norm), 'LR': sum(LR_non_norm), 'LSTM': sum(LSTM_non_norm)}
+
+    def plot_attributions(self, print_sum_attr=True):
         channel_names = []
         for ch_idx in range(len(self.idx_to_ch)):
             channel_names.append(self.idx_to_ch[ch_idx])
@@ -98,6 +105,11 @@ class Experiments:
                            'LSTM Attribution': self.attributions['LSTM']})
 
         ax = df.plot.bar(x='Channel', rot=90)
+        if print_sum_attr:
+            ax.legend(['LTA Attribution (sum ' + str(round(self.load_non_norm_attributions()['LTA'], 2)) + ')',
+                       'SP Attribution (sum ' + str(round(self.load_non_norm_attributions()['SP'], 2)) + ')',
+                       'LR Attribution (sum ' + str(round(self.load_non_norm_attributions()['LR'], 2)) + ')',
+                       'LSTM Attribution (sum ' + str(round(self.load_non_norm_attributions()['LSTM'], 2)) + ')'])
         ax.set_xlabel("Source / Medium")
         plt.tight_layout()
         plt.title('Attributions', fontsize=16)
@@ -128,12 +140,12 @@ class Experiments:
             eval_results_df = eval_results_df.append(results, ignore_index=True)
         print(eval_results_df)
 
-if __name__ == '__main__':
 
+if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-01.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-04.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     end_date_data = pd.Timestamp(year=2021, month=2, day=28, hour=23, minute=59, tz='UTC')
 
@@ -165,5 +177,5 @@ if __name__ == '__main__':
     experiments.train_all()
     experiments.load_attributions()
     experiments.validate_pred()
-    experiments.plot_attributions()
+    experiments.plot_attributions(print_sum_attr=True)
     experiments.profit_eval(total_budget)
