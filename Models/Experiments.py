@@ -54,22 +54,30 @@ class Experiments:
 
     def show_cv_results(self):
         self.calc_mean_and_std()
+        self.plot_attributions()
 
     def calc_mean_and_std(self):
+        self.calc_mean_and_std_pred()
+        self.calc_mean_and_std_attr()
+
+    def calc_mean_and_std_pred(self):
         pass
+
+    def calc_mean_and_std_attr(self):
+        for model_name in self.model_stats:
+            self.attributions[model_name] = self.model_stats[model_name]['attributions'].mean(axis=0).tolist()
 
     def collect_models_attr(self, nr_splits, split_idx):
         models_attr_dict = self.load_attributions(output=True)
-        for models_name in models_attr_dict:
-            if 'attributions' not in self.model_stats[models_name]:
-                self.model_stats[models_name]['attributions'] = np.zeros((nr_splits, len(self.ch_to_idx)))
-            self.model_stats[models_name]['attributions'][split_idx] = np.array(models_attr_dict[models_name])
+        for model_name in models_attr_dict:
+            if 'attributions' not in self.model_stats[model_name]:
+                self.model_stats[model_name]['attributions'] = np.zeros((nr_splits, len(self.ch_to_idx)))
+            self.model_stats[model_name]['attributions'][split_idx] = np.array(models_attr_dict[model_name])
 
     def collect_models_pred_stats(self):
-        models_res, theo_max_accuracy = self.validate_pred(output=True)
+        models_res = self.validate_pred(output=True)
         for model_res in models_res:
             self.collect_model_pred_stats(model_res['model'], model_res)
-        print(self.model_stats)
 
     def collect_model_pred_stats(self, model_name, model_stats):
         if model_name not in self.model_stats:
@@ -143,10 +151,10 @@ class Experiments:
         LR_res['model'] = 'LR'
         SP_res['model'] = 'SP'
         LSTM_res['model'] = 'LSTM'
-        theo_max_accuracy = self.data_loader.get_theo_max_accuracy()
         models_res = [LTA_res, LR_res, SP_res, LSTM_res]
         if output:
-            return models_res, theo_max_accuracy
+            return models_res
+        theo_max_accuracy = self.data_loader.get_theo_max_accuracy()
         self.show_pred_res(models_res, theo_max_accuracy)
 
     def show_pred_res(self, models_res, theo_max_accuracy):
@@ -168,7 +176,7 @@ class Experiments:
         LR_attr = self.LR_model.get_normalized_attributions()
         LSTM_attr = self.LSTM_model.get_normalized_attributions()
         if output:
-            return {'SP': SP_attr, 'LTA': LTA_attr,'LR': LR_attr, 'LSTM': LSTM_attr}
+            return {'SP': SP_attr, 'LTA': LTA_attr, 'LR': LR_attr, 'LSTM': LSTM_attr}
 
         self.attributions['SP'] = SP_attr
         self.attributions['LTA'] = LTA_attr
