@@ -58,7 +58,7 @@ class LTA:
 
     def get_prediction(self, client_id, clients_data):
         channel_idx = clients_data[client_id]['session_channels'][-1]
-        pred = self.prob[channel_idx]
+        pred = self.prob[channel_idx] if channel_idx in self.prob else 0.5
         return round(pred)
 
     def get_results(self):

@@ -37,7 +37,7 @@ class Experiments:
         self.LR_model = LR()
         self.LSTM_model = LSTM(epochs, batch_size, learning_rate)
 
-    def cv(self, nr_splits=5):
+    def cv(self, tot_budget, nr_splits=5):
         train_prop = 1
         clients_data, _ = self.data_loader.get_clients_dict_split(train_prop)
         x, y, _, _ = self.data_loader.get_feature_matrix_split(train_prop, self.use_time)
@@ -59,17 +59,48 @@ class Experiments:
             self.collect_models_pred_stats()
             self.collect_models_attr(nr_splits, split_idx)
         self.show_cv_results()
+        self.profit_eval(tot_budget)
 
     def show_cv_results(self):
-        self.calc_mean_and_std()
+        models_res = self.calc_mean_and_std()
+        self.show_pred_res(models_res, cv=True)
         self.plot_attributions(print_sum_attr=False, cv=True)
 
     def calc_mean_and_std(self):
-        self.calc_mean_and_std_pred()
+        models_res = self.calc_mean_pred()
         self.calc_mean_and_std_attr()
+        return models_res
 
-    def calc_mean_and_std_pred(self):
-        pass
+    def calc_mean_pred(self):
+        models_res = []
+        for model_name in self.model_stats:
+            model_stats_filt = self.model_stats[model_name].copy()
+            model_res_means, model_stats_filt = self.calc_metrics(model_stats_filt)
+            for model_stat in model_stats_filt:
+                stat_list = model_stats_filt[model_stat]
+                model_res_means[model_stat] = sum(stat_list) / len(stat_list)
+            model_res_means['model'] = model_name
+            models_res.append(model_res_means)
+        return models_res
+
+    def calc_metrics(self, model_stats_filt):
+        model_res_means = {}
+        model_res_means['precision'] = (np.array(model_stats_filt['tp']) / (np.array(model_stats_filt['tp']) + np.array(model_stats_filt['fp']))).mean()
+        model_res_means['recall'] = (np.array(model_stats_filt['tp']) / (np.array(model_stats_filt['tp']) + np.array(model_stats_filt['fn']))).mean()
+
+        model_res_means['F1'] = 2 * model_res_means['precision'] * model_res_means['recall'] / (
+                    model_res_means['precision'] + model_res_means['recall'])
+
+        model_res_means['accuracy'] = ((np.array(model_stats_filt['tp']) + np.array(model_stats_filt['tn'])) / (
+                    np.array(model_stats_filt['tn']) + np.array(model_stats_filt['tp']) + np.array(model_stats_filt['fp']) + np.array(model_stats_filt['fn']))).mean()
+
+        model_stats_filt.pop('tn')
+        model_stats_filt.pop('fp')
+        model_stats_filt.pop('fn')
+        model_stats_filt.pop('tp')
+        model_stats_filt.pop('model')
+        model_stats_filt.pop('attributions')
+        return model_res_means, model_stats_filt
 
     def calc_mean_and_std_attr(self):
         for model_name in self.model_stats:
@@ -139,7 +170,6 @@ class Experiments:
 
     def load_models(self, clients_data_train, clients_data_test, x_train, y_train, x_test, y_test,
                     seq_lists_train, labels_train, seq_lists_test, labels_test):
-
         self.SP_model.load_train_test_data(clients_data_train, clients_data_test)
         self.LTA_model.load_train_test_data(clients_data_train, clients_data_test)
         self.LR_model.load_train_test_data(x_train, y_train, x_test, y_test)
@@ -163,20 +193,20 @@ class Experiments:
         models_res = [LTA_res, LR_res, SP_res, LSTM_res]
         if output:
             return models_res
-        theo_max_accuracy = self.data_loader.get_theo_max_accuracy()
-        self.show_pred_res(models_res, theo_max_accuracy)
+        self.show_pred_res(models_res)
 
-    def show_pred_res(self, models_res, theo_max_accuracy):
+    def show_pred_res(self, models_res, cv=False):
         results_df = pd.DataFrame()
         for model_res in models_res:
             results_df = results_df.append(model_res, ignore_index=True)
 
-        results_df['precision'] = results_df['tp'] / (results_df['tp'] + results_df['fp'])
-        results_df['recall'] = results_df['tp'] / (results_df['tp'] + results_df['fn'])
-        results_df['F1'] = 2 * results_df['precision'] * results_df['recall'] / (results_df['precision'] + results_df['recall'])
-        results_df['accuracy'] = (results_df['tp'] + results_df['tn']) / (results_df['tn'] + results_df['tp'] + results_df['fp'] + results_df['fn'])
+        if not cv:
+            results_df['precision'] = results_df['tp'] / (results_df['tp'] + results_df['fp'])
+            results_df['recall'] = results_df['tp'] / (results_df['tp'] + results_df['fn'])
+            results_df['F1'] = 2 * results_df['precision'] * results_df['recall'] / (results_df['precision'] + results_df['recall'])
+            results_df['accuracy'] = (results_df['tp'] + results_df['tn']) / (results_df['tn'] + results_df['tp'] + results_df['fp'] + results_df['fn'])
 
-        print('Theoretical max accuracy on all data is: ', theo_max_accuracy)
+        print('Theoretical max accuracy on all data is: ', self.data_loader.get_theo_max_accuracy())
         print(results_df)
 
     def load_attributions(self, output=False):
@@ -218,8 +248,8 @@ class Experiments:
         else:
             yerr = 0
 
-        ax = df_means.plot.bar(x='Channel', rot=90, yerr=yerr)
-        if print_sum_attr:
+        ax = df_means.plot.bar(x='Channel', rot=90, yerr=yerr, capsize=3)
+        if print_sum_attr and not cv:
             ax.legend(['LTA Attribution (sum ' + str(round(self.load_non_norm_attributions()['LTA'], 2)) + ')',
                        'SP Attribution (sum ' + str(round(self.load_non_norm_attributions()['SP'], 2)) + ')',
                        'LR Attribution (sum ' + str(round(self.load_non_norm_attributions()['LR'], 2)) + ')',
@@ -259,12 +289,12 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-04.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-10.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=2, day=28, hour=23, minute=59, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=3, day=9, hour=23, minute=59, tz='UTC')
 
     start_date_cohort = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_cohort = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=2, day=28, hour=23, minute=59, tz='UTC')
 
     train_proportion = 0.8
     nr_top_ch = 10
@@ -287,7 +317,8 @@ if __name__ == '__main__':
                               file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
                               ctrl_var_value)
-    experiments.cv()
+    experiments.cv(total_budget)
+
     experiments.init_models()
     experiments.load_data()
     experiments.train_all()
