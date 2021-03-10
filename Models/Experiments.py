@@ -17,18 +17,25 @@ class Experiments:
         self.data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                                            file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size,
                                            sim_time, ctrl_var, ctrl_var_value)
+        self.SP_model = None
+        self.LTA_model = None
+        self.LR_model = None
+        self.LSTM_model = None
         self.use_time = use_time
         self.simulate = simulate
+        self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
+        self.ch_to_idx = self.data_loader.get_ch_to_idx_map()
+        self.attributions = {}
+        self.attributions_std = {}
+        self.train_prop = train_prop
+        self.nr_top_ch = nr_top_ch
+        self.model_stats = {}
+
+    def init_models(self):
         self.SP_model = SP()
         self.LTA_model = LTA()
         self.LR_model = LR()
         self.LSTM_model = LSTM(epochs, batch_size, learning_rate)
-        self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
-        self.ch_to_idx = self.data_loader.get_ch_to_idx_map()
-        self.attributions = {}
-        self.train_prop = train_prop
-        self.nr_top_ch = nr_top_ch
-        self.model_stats = {}
 
     def cv(self, nr_splits=5):
         train_prop = 1
@@ -39,6 +46,7 @@ class Experiments:
         tot_nr_samples = len(clients_data)
         nr_samples_test = tot_nr_samples // nr_splits
         for split_idx in range(nr_splits):
+            self.init_models()
             test_start_idx = int(nr_samples_test * split_idx)
             test_end_idx = int(nr_samples_test * (split_idx + 1))
             clients_data_train, clients_data_test = self.get_train_test_dicts(clients_data, test_start_idx, test_end_idx)
@@ -54,7 +62,7 @@ class Experiments:
 
     def show_cv_results(self):
         self.calc_mean_and_std()
-        self.plot_attributions()
+        self.plot_attributions(print_sum_attr=False, cv=True)
 
     def calc_mean_and_std(self):
         self.calc_mean_and_std_pred()
@@ -66,6 +74,7 @@ class Experiments:
     def calc_mean_and_std_attr(self):
         for model_name in self.model_stats:
             self.attributions[model_name] = self.model_stats[model_name]['attributions'].mean(axis=0).tolist()
+            self.attributions_std[model_name] = self.model_stats[model_name]['attributions'].std(axis=0).tolist()
 
     def collect_models_attr(self, nr_splits, split_idx):
         models_attr_dict = self.load_attributions(output=True)
@@ -190,18 +199,26 @@ class Experiments:
         LSTM_non_norm = self.LSTM_model.get_non_normalized_attributions()
         return {'SP': sum(SP_non_norm), 'LTA': sum(LTA_non_norm), 'LR': sum(LR_non_norm), 'LSTM': sum(LSTM_non_norm)}
 
-    def plot_attributions(self, print_sum_attr=True):
+    def plot_attributions(self, print_sum_attr=True, cv=False):
         channel_names = []
         for ch_idx in range(len(self.idx_to_ch)):
             channel_names.append(self.idx_to_ch[ch_idx])
 
-        df = pd.DataFrame({'Channel': channel_names,
+        df_means = pd.DataFrame({'Channel': channel_names,
                            'LTA Attribution': self.attributions['LTA'],
                            'SP Attribution': self.attributions['SP'],
                            'LR Attribution': self.attributions['LR'],
                            'LSTM Attribution': self.attributions['LSTM']})
+        if cv:
+            df_std = pd.DataFrame({'LTA Attribution': self.attributions_std['LTA'],
+                                   'SP Attribution': self.attributions_std['SP'],
+                                   'LR Attribution': self.attributions_std['LR'],
+                                   'LSTM Attribution': self.attributions_std['LSTM']})
+            yerr = df_std.values.T
+        else:
+            yerr = 0
 
-        ax = df.plot.bar(x='Channel', rot=90)
+        ax = df_means.plot.bar(x='Channel', rot=90, yerr=yerr)
         if print_sum_attr:
             ax.legend(['LTA Attribution (sum ' + str(round(self.load_non_norm_attributions()['LTA'], 2)) + ')',
                        'SP Attribution (sum ' + str(round(self.load_non_norm_attributions()['SP'], 2)) + ')',
@@ -271,9 +288,10 @@ if __name__ == '__main__':
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
                               ctrl_var_value)
     experiments.cv()
+    experiments.init_models()
     experiments.load_data()
     experiments.train_all()
     experiments.load_attributions()
     experiments.validate_pred()
-    experiments.plot_attributions(print_sum_attr=True)
+    experiments.plot_attributions(print_sum_attr=False)
     experiments.profit_eval(total_budget)
