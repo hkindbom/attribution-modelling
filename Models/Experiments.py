@@ -122,13 +122,13 @@ class Experiments:
         for model_res in models_res:
             self.collect_model_pred_stats(model_res['model'], model_res)
 
-    def collect_model_pred_stats(self, model_name, model_stats):
+    def collect_model_pred_stats(self, model_name, model_res):
         if model_name not in self.model_stats:
             self.model_stats[model_name] = {}
-            for model_stat in model_stats:
-                self.model_stats[model_name][model_stat] = [model_stats[model_stat]]
+            for model_stat in model_res:
+                self.model_stats[model_name][model_stat] = [model_res[model_stat]]
             return
-        self.add_model_stats(model_name, model_stats)
+        self.add_model_stats(model_name, model_res)
 
     def add_model_stats(self, model_name, model_stats):
         for model_stat in model_stats:
