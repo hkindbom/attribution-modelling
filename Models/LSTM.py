@@ -1,6 +1,7 @@
 import tensorflow as tf
 from tensorflow import keras
 from attention import Attention
+import shap
 import numpy as np
 import pandas as pd
 from sklearn.metrics import roc_auc_score, confusion_matrix
@@ -72,12 +73,33 @@ class LSTM:
     def one_hot_encode_x(self, padded_data):
         return tf.one_hot(padded_data, self.nr_channels, on_value=1, off_value=0, axis=-1)
 
-    def get_normalized_attributions(self):
-        unnorm_attr = self.get_non_normalized_attributions()
+    def get_normalized_attributions(self, use_shap=True):
+        unnorm_attr = self.get_non_normalized_attributions(use_shap)
         norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
         return norm_attr
 
-    def get_non_normalized_attributions(self,):
+    def get_non_normalized_attributions(self, use_shap=True):
+        if use_shap:
+            return self.get_shap_attributions()
+        return self.get_removal_attributions()
+
+    def get_shap_attributions(self):
+        explainer = shap.GradientExplainer(self.model, self.x_train.numpy())
+        shap_values = explainer.shap_values(self.x_train.numpy())
+        return self.shap_values_to_attr(shap_values[0])
+
+    def shap_values_to_attr(self, all_shap_values):
+        shap_attributions = np.zeros(self.nr_channels)
+        ch_counts = np.ones(self.nr_channels)
+        for seq_idx, shap_values_seq in enumerate(all_shap_values):
+            for channel_idx, shap_values_tp in zip(self.x_train_raw[seq_idx], shap_values_seq):
+                shap_attributions[channel_idx] += shap_values_tp[channel_idx]
+                ch_counts[channel_idx] += 1
+        shap_attributions[shap_attributions < 0] = 0
+        shap_attributions /= ch_counts
+        return shap_attributions.tolist()
+
+    def get_removal_attributions(self):
         non_normalized_attributions = np.zeros(self.nr_channels)
         preds_w = self.get_preds(self.x_train)
         for ch_idx in range(self.nr_channels):
@@ -164,4 +186,6 @@ if __name__ == '__main__':
     print('Channel attributions: ', lstm.get_normalized_attributions())
     print('Touchpoint attributions: ', lstm.get_touchpoint_attr(tp_attr_seq_len))
     print(lstm.get_results())
+
+
 
