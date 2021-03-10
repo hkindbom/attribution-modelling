@@ -17,6 +17,9 @@ class Experiments:
         self.data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                                            file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size,
                                            sim_time, ctrl_var, ctrl_var_value)
+        self.epochs = epochs
+        self.batch_size = batch_size
+        self.learning_rate = learning_rate
         self.SP_model = None
         self.LTA_model = None
         self.LR_model = None
@@ -35,7 +38,7 @@ class Experiments:
         self.SP_model = SP()
         self.LTA_model = LTA()
         self.LR_model = LR()
-        self.LSTM_model = LSTM(epochs, batch_size, learning_rate)
+        self.LSTM_model = LSTM(self.epochs, self.batch_size, self.learning_rate)
 
     def cv(self, tot_budget, nr_splits=5):
         train_prop = 1
