@@ -217,13 +217,10 @@ class Experiments:
         LTA_attr = self.LTA_model.get_normalized_attributions()
         LR_attr = self.LR_model.get_normalized_attributions()
         LSTM_attr = self.LSTM_model.get_normalized_attributions()
+        attributions = {'SP': SP_attr, 'LTA': LTA_attr, 'LR': LR_attr, 'LSTM': LSTM_attr}
         if output:
-            return {'SP': SP_attr, 'LTA': LTA_attr, 'LR': LR_attr, 'LSTM': LSTM_attr}
-
-        self.attributions['SP'] = SP_attr
-        self.attributions['LTA'] = LTA_attr
-        self.attributions['LR'] = LR_attr
-        self.attributions['LSTM'] = LSTM_attr
+            return attributions
+        self.attributions = attributions
 
     def load_non_norm_attributions(self):
         SP_non_norm = self.SP_model.get_non_normalized_attributions()
