@@ -177,6 +177,9 @@ class ModelDataLoader:
     def get_GA_df(self):
         return self.GA_df
 
+    def get_GA_nonratio_df(self):
+        return self.data_processing.get_GA_nonratio_df()
+
     def get_converted_clients_df(self):
         return self.converted_clients_df
 

@@ -38,25 +38,25 @@ class Evaluation:
     def back_evaluation(self):
         client_blacklist = []
         total_nr_conversions, total_conversion_value, total_cost, total_ltv = 0, 0, 0, 0
-        for client_id, path in self.GA_df.groupby(level=0):
-            for _, session in path.iterrows():
-                if client_id not in client_blacklist:
-                    cost = session['cost']
-                    channel = session['source_medium']
-                    budget_allows = True
-                    if channel in self.channels_budgets:
-                        if self.channels_budgets[channel] > cost:
-                            self.channels_budgets[channel] -= cost
-                        else:
-                            budget_allows = False
-                    if budget_allows:
-                        total_cost += cost
-                        if session['conversion']:
-                            total_nr_conversions += session['conversion']
-                            total_conversion_value += session['conversion_value']
-                            total_ltv += self.get_client_LTV(client_id)
+        self.GA_df = self.GA_df.reset_index().sort_values(by=['timestamp'])
+        for _, session in self.GA_df.iterrows():
+            if session['client_id'] not in client_blacklist:
+                cost = session['cost']
+                channel = session['source_medium']
+                budget_allows = True
+                if channel in self.channels_budgets:
+                    if self.channels_budgets[channel] > cost:
+                        self.channels_budgets[channel] -= cost
                     else:
-                        client_blacklist.append(client_id)
+                        budget_allows = False
+                if budget_allows:
+                    total_cost += cost
+                    if session['conversion']:
+                        total_nr_conversions += session['conversion']
+                        total_conversion_value += session['conversion_value']
+                        total_ltv += self.get_client_LTV(session['client_id'])
+                else:
+                    client_blacklist.append(session['client_id'])
 
         return {'tot_nr_conv': total_nr_conversions, 'tot_conv_val': total_conversion_value,
                 'tot_ltv': total_ltv, 'tot_cost': total_cost, 'tot_budget': self.total_budget}
@@ -70,7 +70,9 @@ class Evaluation:
     def get_client_LTV(self, client_id):
         converted_client_df = self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client_id]
         if not converted_client_df.empty:
+            print('hittad klient', client_id, 'värd', converted_client_df.iloc[0]['LTV'])
             return converted_client_df.iloc[0]['LTV']
+        print('ej hittad klient', client_id)
         return 0
 
     def evaluate(self):

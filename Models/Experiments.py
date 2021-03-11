@@ -278,6 +278,7 @@ class Experiments:
 
         eval_results_df = pd.DataFrame()
         for model_name in self.attributions:
+            print(model_name)
             evaluation = Evaluation(GA_df, converted_clients_df, total_budget, self.attributions[model_name], self.ch_to_idx)
             results = evaluation.evaluate()
             results['model'] = model_name
@@ -300,7 +301,7 @@ if __name__ == '__main__':
     nr_top_ch = 10
     ratio_maj_min_class = 1
     use_time = True
-    total_budget = 1000
+    total_budget = 10000
 
     simulate = False
     cohort_size = 10000
@@ -317,7 +318,7 @@ if __name__ == '__main__':
                               file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
                               ctrl_var_value)
-    experiments.cv(total_budget)
+    #experiments.cv(total_budget)
 
     experiments.init_models()
     experiments.load_data()
