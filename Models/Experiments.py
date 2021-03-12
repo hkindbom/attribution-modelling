@@ -347,7 +347,7 @@ if __name__ == '__main__':
                               file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
                               ctrl_var_value, eval_fw, total_budget, custom_attr_eval)
-    #experiments.cv(total_budget)
+    #experiments.cv()
 
     experiments.init_models()
     experiments.load_data()
