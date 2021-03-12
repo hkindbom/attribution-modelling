@@ -43,7 +43,7 @@ class Experiments:
         self.LR_model = LR()
         self.LSTM_model = LSTM(self.epochs, self.batch_size, self.learning_rate)
 
-    def cv(self, tot_budget, nr_splits=5):
+    def cv(self, nr_splits=5):
         train_prop = 1
         clients_data, _ = self.data_loader.get_clients_dict_split(train_prop)
         x, y, _, _ = self.data_loader.get_feature_matrix_split(train_prop, self.use_time)
@@ -65,7 +65,13 @@ class Experiments:
             self.collect_models_pred_stats()
             self.collect_models_attr(nr_splits, split_idx)
         self.show_cv_results()
-        self.profit_eval(tot_budget)
+        if self.eval_fw:
+            self.init_eval()
+
+    def init_eval(self):
+        if self.custom_attr_eval is not None:
+            self.add_custom_attr()
+        self.profit_eval()
 
     def show_cv_results(self):
         models_res = self.calc_mean_and_std()
@@ -121,7 +127,7 @@ class Experiments:
             self.model_stats[model_name]['attributions'][split_idx] = np.array(models_attr_dict[model_name])
 
     def collect_models_pred_stats(self):
-        models_res = self.validate_pred(output=True)
+        models_res = self.validate(output=True)
         for model_res in models_res:
             self.collect_model_pred_stats(model_res['model'], model_res)
 
@@ -187,7 +193,7 @@ class Experiments:
         self.LR_model.train()
         self.LSTM_model.train()
 
-    def validate_pred(self, output=False):
+    def validate(self, output=False):
         LTA_res = self.LTA_model.get_results()
         LR_res = self.LR_model.get_results()
         SP_res = self.SP_model.get_results()
@@ -201,8 +207,7 @@ class Experiments:
             return models_res
         self.show_pred_res(models_res)
         if self.eval_fw:
-            self.add_custom_attr()
-            self.profit_eval()
+            self.init_eval()
 
     def show_pred_res(self, models_res, cv=False):
         results_df = pd.DataFrame()
@@ -276,24 +281,26 @@ class Experiments:
         plt.show()
 
     def add_custom_attr(self):
-        if self.custom_attr_eval is not None:
-            attr = np.zeros(self.nr_top_ch)
-            for ch_name in self.custom_attr_eval:
-                idx = self.ch_to_idx[ch_name]
-                attr[idx] = self.custom_attr_eval[ch_name]
-            attr = attr / attr.sum()
-            self.attributions['custom'] = attr.tolist()
+        attr = np.zeros(self.nr_top_ch)
+        for ch_name in self.custom_attr_eval:
+            if not ch_name in self.ch_to_idx:
+                print('Oops! Could not match', ch_name, '. Custom attribution not possible.')
+                return
+            idx = self.ch_to_idx[ch_name]
+            attr[idx] = self.custom_attr_eval[ch_name]
+        attr = attr / attr.sum()
+        self.attributions['custom'] = attr.tolist()
 
     def profit_eval(self):
         if self.simulate:
             print('Oops... Can\'t run eval FW with simulated data')
             return
-        GA_nonratio_df = self.data_loader.get_GA_nonratio_df()
+        GA_unbalanced_df = self.data_loader.get_GA_unbalanced_df()
         converted_clients_df = self.data_loader.get_converted_clients_df()
 
         eval_results_df = pd.DataFrame()
         for model_name in self.attributions:
-            evaluation = Evaluation(GA_nonratio_df, converted_clients_df, self.total_budget, self.attributions[model_name], self.ch_to_idx)
+            evaluation = Evaluation(GA_unbalanced_df, converted_clients_df, self.total_budget, self.attributions[model_name], self.ch_to_idx)
             results = evaluation.evaluate()
             results['model'] = model_name
             eval_results_df = eval_results_df.append(results, ignore_index=True)
@@ -346,5 +353,5 @@ if __name__ == '__main__':
     experiments.load_data()
     experiments.train_all()
     experiments.load_attributions()
-    experiments.validate_pred()
+    experiments.validate()
     experiments.plot_attributions(print_sum_attr=False)

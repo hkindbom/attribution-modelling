@@ -100,7 +100,7 @@ class DataProcessing:
         self.end_date_cohort = end_date_cohort
         self.nr_top_ch = nr_top_ch
         self.ratio_maj_min_class = ratio_maj_min_class
-        self.GA_nonratio_df = None
+        self.GA_unbalanced_df = None
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
@@ -370,14 +370,11 @@ class DataProcessing:
         bq_processor = ApiDataBigQuery(self.start_date_data, self.end_date_data)
         self.funnel_df = bq_processor.get_funnel_df()
 
-    def assign_GA_nonratio_df(self):
-        self.GA_nonratio_df = self.GA_df.copy()
-
     def save_to_csv(self):
         self.GA_df.to_csv(self.save_to_path, sep=',')
 
-    def get_GA_nonratio_df(self):
-        return self.GA_nonratio_df
+    def get_GA_unbalanced_df(self):
+        return self.GA_unbalanced_df
 
     def get_GA_df(self):
         return self.GA_df
@@ -414,9 +411,9 @@ class DataProcessing:
         self.create_converted_clients_df()
         self.estimate_client_LTV()
         self.assign_cost(['organic'])
-        self.assign_GA_nonratio_df()
 
         if balance_classes_late:
+            self.GA_unbalanced_df = self.GA_df.copy()
             self.balance_classes_GA()
 
 

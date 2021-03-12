@@ -23,8 +23,7 @@ class Evaluation:
 
         nonzero_idxs = [self.ch_to_idx_map[ch_name] for ch_name in self.channels_spend.index]
         self.attributions = [attr if idx in nonzero_idxs else 0. for idx, attr in enumerate(self.attributions)]
-        self.attributions = np.array(self.attributions)/np.array(self.attributions).sum()
-        self.attributions = self.attributions.tolist()
+        self.attributions = (np.array(self.attributions)/sum(self.attributions)).tolist()
 
     def calculate_channels_roi(self):
         conversion_paths_df = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
