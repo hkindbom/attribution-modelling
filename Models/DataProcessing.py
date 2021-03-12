@@ -100,6 +100,7 @@ class DataProcessing:
         self.end_date_cohort = end_date_cohort
         self.nr_top_ch = nr_top_ch
         self.ratio_maj_min_class = ratio_maj_min_class
+        self.GA_unbalanced_df = None
         self.GA_df = None
         self.MP_df = None
         self.converted_clients_df = None
@@ -372,6 +373,9 @@ class DataProcessing:
     def save_to_csv(self):
         self.GA_df.to_csv(self.save_to_path, sep=',')
 
+    def get_GA_unbalanced_df(self):
+        return self.GA_unbalanced_df
+
     def get_GA_df(self):
         return self.GA_df
 
@@ -390,7 +394,7 @@ class DataProcessing:
     def get_client_mixpanel_info(self, client):
         return self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client]
 
-    def process_all(self, ctrl_var=None, ctrl_var_value=None):
+    def process_all(self, ctrl_var=None, ctrl_var_value=None, balance_classes_late=False):
         self.process_bq_funnel()
         self.process_individual_data()
         self.drop_duplicate_sessions()
@@ -400,12 +404,17 @@ class DataProcessing:
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
-        self.balance_classes_GA()
+        if not balance_classes_late:
+            self.balance_classes_GA()
 
         self.process_mixpanel_data()
         self.create_converted_clients_df()
         self.estimate_client_LTV()
         self.assign_cost(['organic'])
+
+        if balance_classes_late:
+            self.GA_unbalanced_df = self.GA_df.copy()
+            self.balance_classes_GA()
 
 
 if __name__ == '__main__':

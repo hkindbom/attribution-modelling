@@ -8,7 +8,7 @@ from collections import Counter
 class ModelDataLoader:
     def __init__(self, start_date_data, end_date_data, start_data_cohort, end_data_cohort,
                  file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1, simulate=False, cohort_size=100, sim_time=100,
-                 ctrl_var=None, ctrl_var_value=None):
+                 ctrl_var=None, ctrl_var_value=None, balance_classes_late=False):
         self.data_processing = DataProcessing(start_date_data, end_date_data, start_data_cohort,
                                               end_data_cohort, file_path_mp, nr_top_ch=nr_top_ch,
                                               ratio_maj_min_class=ratio_maj_min_class)
@@ -22,6 +22,7 @@ class ModelDataLoader:
         self.simulate = simulate
         self.cohort_size = cohort_size
         self.sim_time = sim_time
+        self.balance_classes_late = balance_classes_late
         self.load_data()
 
     def load_data(self):
@@ -37,7 +38,7 @@ class ModelDataLoader:
         self.ch_to_idx, self.idx_to_ch = sim.get_ch_idx_maps()
 
     def load_real_data(self):
-        self.data_processing.process_all(self.ctrl_var, self.ctrl_var_value)
+        self.data_processing.process_all(self.ctrl_var, self.ctrl_var_value, self.balance_classes_late)
         self.GA_df = self.data_processing.get_GA_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
         self.create_clients_dict()
@@ -176,6 +177,9 @@ class ModelDataLoader:
 
     def get_GA_df(self):
         return self.GA_df
+
+    def get_GA_unbalanced_df(self):
+        return self.data_processing.get_GA_unbalanced_df()
 
     def get_converted_clients_df(self):
         return self.converted_clients_df
