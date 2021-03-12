@@ -372,6 +372,7 @@ class DataProcessing:
 
     def assign_GA_nonratio_df(self):
         self.GA_nonratio_df = self.GA_df.copy()
+        self.GA_nonratio_df.to_csv('lololol.csv')
 
     def save_to_csv(self):
         self.GA_df.to_csv(self.save_to_path, sep=',')
@@ -407,13 +408,16 @@ class DataProcessing:
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
-        self.assign_GA_nonratio_df()
-        self.balance_classes_GA()
+
+        #self.balance_classes_GA()
 
         self.process_mixpanel_data()
         self.create_converted_clients_df()
         self.estimate_client_LTV()
         self.assign_cost(['organic'])
+        self.assign_GA_nonratio_df()
+
+        self.balance_classes_GA()
 
 
 if __name__ == '__main__':

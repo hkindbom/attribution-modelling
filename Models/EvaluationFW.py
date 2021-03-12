@@ -4,6 +4,7 @@ from LR import LR
 from LTA import LTA
 from ModelDataLoader import ModelDataLoader
 
+
 class Evaluation:
     def __init__(self, GA_df, converted_clients_df, total_budget, attributions, ch_to_idx_map):
         self.GA_df = GA_df
@@ -13,13 +14,21 @@ class Evaluation:
         self.ch_to_idx_map = ch_to_idx_map
         self.channels_roi = {}
         self.channels_budgets = {}
+        self.channels_spend = None
+
+    def normalize_spend_channels(self):
+        channel_spend_series = self.GA_df.groupby(['source_medium']).agg('sum')['cost']
+        self.channels_spend = channel_spend_series[channel_spend_series > 0]
+
+        nonzero_idxs = [self.ch_to_idx_map[ch_name] for ch_name in self.channels_spend.index]
+        print(self.attributions)
+        self.attributions = [attr if idx in nonzero_idxs else 0. for idx, attr in enumerate(self.attributions)]
+        print(self.attributions)
+        print(self.ch_to_idx_map)
 
     def calculate_channels_roi(self):
         conversion_paths_df = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
-        channels_spend = self.GA_df.groupby(['source_medium']).agg('sum')['cost']
-        channels_spend = channels_spend[channels_spend > 0]
-
-        for channel_name, channel_spend in channels_spend.iteritems():
+        for channel_name, channel_spend in self.channels_spend.iteritems():
             conv_paths_w_channel_df = conversion_paths_df[conversion_paths_df['source_medium'] == channel_name]
             ch_idx = self.ch_to_idx_map[channel_name]
             attribution = self.attributions[ch_idx]
@@ -39,6 +48,7 @@ class Evaluation:
         client_blacklist = []
         total_nr_conversions, total_conversion_value, total_cost, total_ltv = 0, 0, 0, 0
         self.GA_df = self.GA_df.reset_index().sort_values(by=['timestamp'])
+        print('before', self.channels_budgets)
         for _, session in self.GA_df.iterrows():
             if session['client_id'] not in client_blacklist:
                 cost = session['cost']
@@ -57,6 +67,7 @@ class Evaluation:
                         total_ltv += self.get_client_LTV(session['client_id'])
                 else:
                     client_blacklist.append(session['client_id'])
+        print('after', self.channels_budgets)
 
         return {'tot_nr_conv': total_nr_conversions, 'tot_conv_val': total_conversion_value,
                 'tot_ltv': total_ltv, 'tot_cost': total_cost, 'tot_budget': self.total_budget}
@@ -70,12 +81,11 @@ class Evaluation:
     def get_client_LTV(self, client_id):
         converted_client_df = self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client_id]
         if not converted_client_df.empty:
-            print('hittad klient', client_id, 'värd', converted_client_df.iloc[0]['LTV'])
             return converted_client_df.iloc[0]['LTV']
-        print('ej hittad klient', client_id)
         return 0
 
     def evaluate(self):
+        self.normalize_spend_channels()
         self.calculate_channels_roi()
         self.calculate_channels_budgets()
         results = self.back_evaluation()
@@ -83,7 +93,7 @@ class Evaluation:
 
 
 if __name__ == '__main__':
-    file_path_mp = '../Data/Mixpanel_data_2021-02-22.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-10.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=2, hour=0, minute=0, tz='UTC')
     end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
 

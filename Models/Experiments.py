@@ -269,17 +269,24 @@ class Experiments:
             plt.ylabel('Normalized attention')
         plt.show()
 
+    def add_custom_attr(self, custom_attr):
+        attr = np.zeros(self.nr_top_ch)
+        for ch_name in custom_attr:
+            idx = self.ch_to_idx[ch_name]
+            attr[idx] = custom_attr[ch_name]
+        self.attributions['custom'] = attr/attr.sum()
+
     def profit_eval(self, total_budget):
         if self.simulate:
             print('Oops... Can\'t run eval FW with simulated data')
             return
-        GA_df = self.data_loader.get_GA_df()
+        GA_nonratio_df = self.data_loader.get_GA_nonratio_df()
         converted_clients_df = self.data_loader.get_converted_clients_df()
 
         eval_results_df = pd.DataFrame()
         for model_name in self.attributions:
             print(model_name)
-            evaluation = Evaluation(GA_df, converted_clients_df, total_budget, self.attributions[model_name], self.ch_to_idx)
+            evaluation = Evaluation(GA_nonratio_df, converted_clients_df, total_budget, self.attributions[model_name], self.ch_to_idx)
             results = evaluation.evaluate()
             results['model'] = model_name
             eval_results_df = eval_results_df.append(results, ignore_index=True)
@@ -313,6 +320,13 @@ if __name__ == '__main__':
 
     ctrl_var = None
     ctrl_var_value = None
+    custom_attr = {'google / cpc': 1,
+                   'facebook / ad': 0,
+                   'mecenat / partnership': 0,
+                   'studentkortet / partnership': 0,
+                   'tiktok / ad': 0,
+                   'adtraction / affiliate': 0,
+                   'snapchat / ad': 0}
 
     experiments = Experiments(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                               file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
@@ -326,4 +340,5 @@ if __name__ == '__main__':
     experiments.load_attributions()
     experiments.validate_pred()
     experiments.plot_attributions(print_sum_attr=False)
+    experiments.add_custom_attr(custom_attr)
     experiments.profit_eval(total_budget)
