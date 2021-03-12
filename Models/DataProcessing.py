@@ -397,7 +397,7 @@ class DataProcessing:
     def get_client_mixpanel_info(self, client):
         return self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client]
 
-    def process_all(self, ctrl_var=None, ctrl_var_value=None, balance_classes_early=True):
+    def process_all(self, ctrl_var=None, ctrl_var_value=None, balance_classes_late=False):
         self.process_bq_funnel()
         self.process_individual_data()
         self.drop_duplicate_sessions()
@@ -407,7 +407,7 @@ class DataProcessing:
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
-        if balance_classes_early:
+        if not balance_classes_late:
             self.balance_classes_GA()
 
         self.process_mixpanel_data()
@@ -416,7 +416,7 @@ class DataProcessing:
         self.assign_cost(['organic'])
         self.assign_GA_nonratio_df()
 
-        if not balance_classes_early:
+        if balance_classes_late:
             self.balance_classes_GA()
 
 
