@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from SP import SP
 from LR import LR
 from LTA import LTA
@@ -21,10 +22,9 @@ class Evaluation:
         self.channels_spend = channel_spend_series[channel_spend_series > 0]
 
         nonzero_idxs = [self.ch_to_idx_map[ch_name] for ch_name in self.channels_spend.index]
-        print(self.attributions)
         self.attributions = [attr if idx in nonzero_idxs else 0. for idx, attr in enumerate(self.attributions)]
-        print(self.attributions)
-        print(self.ch_to_idx_map)
+        self.attributions = np.array(self.attributions)/np.array(self.attributions).sum()
+        self.attributions = self.attributions.to_list()
 
     def calculate_channels_roi(self):
         conversion_paths_df = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]

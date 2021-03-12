@@ -10,13 +10,13 @@ from LSTM import LSTM
 
 class Experiments:
 
-    def __init__(self, start_date_data, end_date_data, start_date_cohort, end_date_cohort,
-                 file_path_mp, nr_top_ch, train_prop, ratio_maj_min_class, use_time, simulate,
-                 cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var, ctrl_var_value):
+    def __init__(self, start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch,
+                 train_prop, ratio_maj_min_class, use_time, simulate, cohort_size, sim_time, epochs, batch_size,
+                 learning_rate, ctrl_var, ctrl_var_value, eval_fw, total_budget, custom_attr_eval):
 
         self.data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                                            file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size,
-                                           sim_time, ctrl_var, ctrl_var_value)
+                                           sim_time, ctrl_var, ctrl_var_value, eval_fw)
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -33,6 +33,9 @@ class Experiments:
         self.train_prop = train_prop
         self.nr_top_ch = nr_top_ch
         self.model_stats = {}
+        self.eval_fw = eval_fw
+        self.custom_attr_eval = custom_attr_eval
+        self.total_budget = total_budget
 
     def init_models(self):
         self.SP_model = SP()
@@ -197,6 +200,9 @@ class Experiments:
         if output:
             return models_res
         self.show_pred_res(models_res)
+        if self.eval:
+            self.add_custom_attr()
+            self.profit_eval(self.total_budget)
 
     def show_pred_res(self, models_res, cv=False):
         results_df = pd.DataFrame()
@@ -269,12 +275,14 @@ class Experiments:
             plt.ylabel('Normalized attention')
         plt.show()
 
-    def add_custom_attr(self, custom_attr):
-        attr = np.zeros(self.nr_top_ch)
-        for ch_name in custom_attr:
-            idx = self.ch_to_idx[ch_name]
-            attr[idx] = custom_attr[ch_name]
-        self.attributions['custom'] = attr/attr.sum()
+    def add_custom_attr(self):
+        if self.custom_attr_eval is not None:
+            attr = np.zeros(self.nr_top_ch)
+            for ch_name in self.custom_attr_eval:
+                idx = self.ch_to_idx[ch_name]
+                attr[idx] = self.custom_attr_eval[ch_name]
+            attr = attr / attr.sum()
+            self.attributions['custom'] = attr.to_list()
 
     def profit_eval(self, total_budget):
         if self.simulate:
@@ -308,7 +316,7 @@ if __name__ == '__main__':
     nr_top_ch = 10
     ratio_maj_min_class = 1
     use_time = True
-    total_budget = 10000
+    total_budget = 5000
 
     simulate = False
     cohort_size = 10000
@@ -320,18 +328,19 @@ if __name__ == '__main__':
 
     ctrl_var = None
     ctrl_var_value = None
-    custom_attr = {'google / cpc': 1,
-                   'facebook / ad': 0,
-                   'mecenat / partnership': 0,
-                   'studentkortet / partnership': 0,
-                   'tiktok / ad': 0,
-                   'adtraction / affiliate': 0,
-                   'snapchat / ad': 0}
+    eval_fw = True
+    custom_attr_eval = {'google / cpc': 1,
+                        'facebook / ad': 1,
+                        'mecenat / partnership': 1,
+                        'studentkortet / partnership': 1,
+                        'tiktok / ad': 1,
+                        'adtraction / affiliate': 1,
+                        'snapchat / ad': 1}
 
     experiments = Experiments(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                               file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
-                              ctrl_var_value)
+                              ctrl_var_value, eval_fw, total_budget, custom_attr_eval)
     #experiments.cv(total_budget)
 
     experiments.init_models()
@@ -340,5 +349,3 @@ if __name__ == '__main__':
     experiments.load_attributions()
     experiments.validate_pred()
     experiments.plot_attributions(print_sum_attr=False)
-    experiments.add_custom_attr(custom_attr)
-    experiments.profit_eval(total_budget)
