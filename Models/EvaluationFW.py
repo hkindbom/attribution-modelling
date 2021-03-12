@@ -24,7 +24,7 @@ class Evaluation:
         nonzero_idxs = [self.ch_to_idx_map[ch_name] for ch_name in self.channels_spend.index]
         self.attributions = [attr if idx in nonzero_idxs else 0. for idx, attr in enumerate(self.attributions)]
         self.attributions = np.array(self.attributions)/np.array(self.attributions).sum()
-        self.attributions = self.attributions.to_list()
+        self.attributions = self.attributions.tolist()
 
     def calculate_channels_roi(self):
         conversion_paths_df = self.GA_df.loc[self.GA_df['converted_eventually'] == 1]
@@ -48,7 +48,6 @@ class Evaluation:
         client_blacklist = []
         total_nr_conversions, total_conversion_value, total_cost, total_ltv = 0, 0, 0, 0
         self.GA_df = self.GA_df.reset_index().sort_values(by=['timestamp'])
-        print('before', self.channels_budgets)
         for _, session in self.GA_df.iterrows():
             if session['client_id'] not in client_blacklist:
                 cost = session['cost']
@@ -67,7 +66,6 @@ class Evaluation:
                         total_ltv += self.get_client_LTV(session['client_id'])
                 else:
                     client_blacklist.append(session['client_id'])
-        print('after', self.channels_budgets)
 
         return {'tot_nr_conv': total_nr_conversions, 'tot_conv_val': total_conversion_value,
                 'tot_ltv': total_ltv, 'tot_cost': total_cost, 'tot_budget': self.total_budget}

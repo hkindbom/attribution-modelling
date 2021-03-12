@@ -200,9 +200,9 @@ class Experiments:
         if output:
             return models_res
         self.show_pred_res(models_res)
-        if self.eval:
+        if self.eval_fw:
             self.add_custom_attr()
-            self.profit_eval(self.total_budget)
+            self.profit_eval()
 
     def show_pred_res(self, models_res, cv=False):
         results_df = pd.DataFrame()
@@ -282,9 +282,9 @@ class Experiments:
                 idx = self.ch_to_idx[ch_name]
                 attr[idx] = self.custom_attr_eval[ch_name]
             attr = attr / attr.sum()
-            self.attributions['custom'] = attr.to_list()
+            self.attributions['custom'] = attr.tolist()
 
-    def profit_eval(self, total_budget):
+    def profit_eval(self):
         if self.simulate:
             print('Oops... Can\'t run eval FW with simulated data')
             return
@@ -293,8 +293,7 @@ class Experiments:
 
         eval_results_df = pd.DataFrame()
         for model_name in self.attributions:
-            print(model_name)
-            evaluation = Evaluation(GA_nonratio_df, converted_clients_df, total_budget, self.attributions[model_name], self.ch_to_idx)
+            evaluation = Evaluation(GA_nonratio_df, converted_clients_df, self.total_budget, self.attributions[model_name], self.ch_to_idx)
             results = evaluation.evaluate()
             results['model'] = model_name
             eval_results_df = eval_results_df.append(results, ignore_index=True)
