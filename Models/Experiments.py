@@ -249,6 +249,12 @@ class Experiments:
         if attributions is None:
             attributions = self.attributions
 
+        print('lala', channel_names)
+        print('lta', attributions['LTA'])
+        print('SP', attributions['SP'])
+        print('lr', attributions['LR'])
+        print('lstm', attributions['LSTM'])
+
         df_means = pd.DataFrame({'Channel': channel_names,
                            'LTA Attribution': attributions['LTA'],
                            'SP Attribution': attributions['SP'],
