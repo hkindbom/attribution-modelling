@@ -30,6 +30,7 @@ class Experiments:
         self.ch_to_idx = self.data_loader.get_ch_to_idx_map()
         self.attributions = {}
         self.attributions_std = {}
+        self.attributions_roi = {}
         self.train_prop = train_prop
         self.nr_top_ch = nr_top_ch
         self.model_stats = {}
@@ -76,7 +77,7 @@ class Experiments:
     def show_cv_results(self):
         models_res = self.calc_mean_and_std()
         self.show_pred_res(models_res, cv=True)
-        self.plot_attributions(print_sum_attr=False, cv=True)
+        self.plot_attributions(self.attributions, print_sum_attr=False, cv=True)
 
     def calc_mean_and_std(self):
         models_res = self.calc_mean_pred()
@@ -240,16 +241,19 @@ class Experiments:
         LSTM_non_norm = self.LSTM_model.get_non_normalized_attributions()
         return {'SP': sum(SP_non_norm), 'LTA': sum(LTA_non_norm), 'LR': sum(LR_non_norm), 'LSTM': sum(LSTM_non_norm)}
 
-    def plot_attributions(self, print_sum_attr=True, cv=False):
+    def plot_attributions(self, attributions=None, print_sum_attr=True, cv=False):
         channel_names = []
         for ch_idx in range(len(self.idx_to_ch)):
             channel_names.append(self.idx_to_ch[ch_idx])
 
+        if attributions is None:
+            attributions = self.attributions
+
         df_means = pd.DataFrame({'Channel': channel_names,
-                           'LTA Attribution': self.attributions['LTA'],
-                           'SP Attribution': self.attributions['SP'],
-                           'LR Attribution': self.attributions['LR'],
-                           'LSTM Attribution': self.attributions['LSTM']})
+                           'LTA Attribution': attributions['LTA'],
+                           'SP Attribution': attributions['SP'],
+                           'LR Attribution': attributions['LR'],
+                           'LSTM Attribution': attributions['LSTM']})
         if cv:
             df_std = pd.DataFrame({'LTA Attribution': self.attributions_std['LTA'],
                                    'SP Attribution': self.attributions_std['SP'],
@@ -304,7 +308,9 @@ class Experiments:
             results = evaluation.evaluate()
             results['model'] = model_name
             eval_results_df = eval_results_df.append(results, ignore_index=True)
+            self.attributions_roi[model_name] = evaluation.get_channels_roi()
         print(eval_results_df)
+        self.plot_attributions(self.attributions_roi, print_sum_attr=False)
 
 
 if __name__ == '__main__':

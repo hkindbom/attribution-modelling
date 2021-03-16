@@ -81,6 +81,13 @@ class Evaluation:
             return converted_client_df.iloc[0]['LTV']
         return 0
 
+    def get_channels_roi(self):
+        roi_attr = np.zeros(len(self.attributions))
+        for channel in self.channels_roi:
+            idx = self.ch_to_idx_map[channel]
+            roi_attr[idx] = self.channels_roi[channel]
+        return roi_attr.tolist()
+
     def evaluate(self):
         self.normalize_spend_channels()
         self.calculate_channels_roi()
