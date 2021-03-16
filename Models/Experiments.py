@@ -249,12 +249,6 @@ class Experiments:
         if attributions is None:
             attributions = self.attributions
 
-        print('lala', channel_names)
-        print('lta', attributions['LTA'])
-        print('SP', attributions['SP'])
-        print('lr', attributions['LR'])
-        print('lstm', attributions['LSTM'])
-
         df_means = pd.DataFrame({'Channel': channel_names,
                            'LTA Attribution': attributions['LTA'],
                            'SP Attribution': attributions['SP'],
@@ -316,7 +310,6 @@ class Experiments:
             eval_results_df = eval_results_df.append(results, ignore_index=True)
             self.attributions_roi[model_name] = evaluation.get_channels_roi()
         print(eval_results_df)
-        print(self.attributions_roi)
         self.plot_attributions(self.attributions_roi, print_sum_attr=False)
 
 
