@@ -1,5 +1,6 @@
 import heapq
 import numpy as np
+from random import shuffle
 
 class Channel:
     def __init__(self, index, name, cpc, click_prob_inc, conv_prob_inc, exposure_intensity):
@@ -63,10 +64,30 @@ class Simulator:
             self.create_new_event(event_ch, event_person_id)
         print('Simulation done')
 
+    def get_adjusted_nr_samples(self, persons, nr_pos_max, nr_neg_max):
+        if nr_pos_max is None or nr_neg_max is None:
+            return persons
+        shuffle(persons)
+        count_pos = 0
+        count_neg = 0
+        filtered_persons = []
+        for person in persons:
+            if int(person.converted) and count_pos < nr_pos_max:
+                count_pos += 1
+                filtered_persons.append(person)
+            if not int(person.converted) and count_neg < nr_neg_max:
+                count_neg += 1
+                filtered_persons.append(person)
 
-    def get_data_dict_format(self):
+        print('Nr converted sim: ', count_pos, 'Nr non-converted sim: ', count_neg)
+        if nr_pos_max + nr_neg_max != len(filtered_persons):
+            print('WARNING! Nr simulated samples don\'t match real data')
+        return filtered_persons
+
+    def get_data_dict_format(self, nr_pos, nr_neg):
+        persons = self.get_adjusted_nr_samples(self.persons, nr_pos, nr_neg)
         persons_dict = {}
-        for person in self.persons:
+        for person in persons:
             if len(person.click_times) > 0:
                 persons_dict[person.id] = {}
                 persons_dict[person.id]['label'] = int(person.converted)

@@ -47,10 +47,10 @@ class Experiments:
         self.custom_attr_eval = custom_attr_eval
         self.total_budget = total_budget
 
-    def init_data_loader(self):
+    def init_data_loader(self, nr_pos_sim=None, nr_neg_sim=None):
         self.data_loader = ModelDataLoader(self.start_date_data, self.end_date_data, self.start_date_cohort, self.end_date_cohort,
                                            self.file_path_mp, self.nr_top_ch, self.ratio_maj_min_class, self.simulate, self.cohort_size,
-                                           self.sim_time, self.ctrl_var, self.ctrl_var_value, self.eval_fw)
+                                           self.sim_time, self.ctrl_var, self.ctrl_var_value, self.eval_fw, nr_pos_sim, nr_neg_sim)
         self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
         self.ch_to_idx = self.data_loader.get_ch_to_idx_map()
 
@@ -68,7 +68,9 @@ class Experiments:
         seq_lists_train_real, labels_train_real, seq_lists_test_real, labels_test_real = self.data_loader.get_seq_lists_split(self.train_prop)
 
         self.simulate = True
-        self.init_data_loader()
+        nr_pos_sim = sum(labels_train_real) + sum(labels_test_real)
+        nr_neg_sim = len(labels_train_real) + len(labels_test_real) - nr_pos_sim
+        self.init_data_loader(nr_pos_sim, nr_neg_sim)
         clients_data_train_sim, _ = self.data_loader.get_clients_dict_split(self.train_prop)
         x_train_sim, y_train_sim, _, _ = self.data_loader.get_feature_matrix_split(self.train_prop, self.use_time)
         seq_lists_train_sim, labels_train_sim, _, _ = self.data_loader.get_seq_lists_split(self.train_prop)
