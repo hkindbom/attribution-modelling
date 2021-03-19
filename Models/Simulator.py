@@ -131,18 +131,18 @@ class Simulator:
         return ch_to_idx, idx_to_ch
 
     def create_channels(self):
-        self.channels.append(Channel(0, 'Fb', 0, 0.1, 0.05, 0.3))
-        self.channels.append(Channel(1, 'Google cpc', 1, 0.05, 0.0, 0.2))
-        self.channels.append(Channel(2, 'Snap', 2, 0.0, 0.0, 0.3))
-        self.channels.append(Channel(3, 'Partnership', 3, 0.2, 0.4, 0.05))
-        self.channels.append(Channel(4, 'Google Organic', 4, 0.2, 0.2, 0.2))
-        self.channels.append(Channel(5, 'Direct', 5, 0.2, 0.3, 0.1))
-        self.ch_interact = [[1, 1, 1, 1, 1, 1],
-                            [1, 1, 1, 1, 1, 1],
-                            [1, 1, 1, 1, 1, 1],
-                            [1, 1, 1, 1, 1, 1],
-                            [1, 1, 1, 1, 1, 1],
-                            [1, 1, 1, 1, 1, 1]]
+        # index, name, cpc, click_prob_inc, conv_prob_inc, exposure_intensity
+        self.channels.append(Channel(0, '(direct) / (none)', 0, 0.05, 0.05, 0.3))
+        self.channels.append(Channel(1, 'adtraction / affiliate', 1, 0.05, 0.05, 0.2))
+        self.channels.append(Channel(2, 'facebook / ad', 2, 0.01, 0.01, 0.3))
+        self.channels.append(Channel(3, 'google / cpc', 3, 0.04, 0.04, 0.2))
+        self.channels.append(Channel(4, 'google / organic', 4, 0.04, 0.04, 0.2))
+        self.channels.append(Channel(5, 'mecenat / partnership', 5, 0.1, 0.1, 0.3))
+        self.channels.append(Channel(6, 'newsletter / email', 6, 0.2, 0.2, 0.2))
+        self.channels.append(Channel(7, 'snapchat / ad', 7, 0.0, 0.0, 0.05))
+        self.channels.append(Channel(8, 'studentkortet / partnership', 8, 0.15, 0.15, 0.2))
+        self.channels.append(Channel(9, 'tiktok / ad', 9, 0.0, 0.0, 0.1))
+        self.ch_interact = np.ones((10, 10)).tolist()
 
 if __name__ == '__main__':
     cohort_size = 10

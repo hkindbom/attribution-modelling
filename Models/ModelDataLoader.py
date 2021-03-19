@@ -45,7 +45,7 @@ class ModelDataLoader:
 
     def create_clients_dict(self, use_LTV=False):
         GA_temp = self.GA_df
-        self.create_idx_ch_map(GA_temp['source_medium'].unique().tolist())
+        self.create_idx_ch_map(GA_temp['source_medium'].sort_values().unique().tolist())
         for client_id, client_df in GA_temp.groupby(level=0):
             self.process_client_df(client_id, client_df, use_LTV)
 

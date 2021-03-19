@@ -14,9 +14,18 @@ class Experiments:
                  train_prop, ratio_maj_min_class, use_time, simulate, cohort_size, sim_time, epochs, batch_size,
                  learning_rate, ctrl_var, ctrl_var_value, eval_fw, total_budget, custom_attr_eval):
 
-        self.data_loader = ModelDataLoader(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
-                                           file_path_mp, nr_top_ch, ratio_maj_min_class, simulate, cohort_size,
-                                           sim_time, ctrl_var, ctrl_var_value, eval_fw)
+        self.start_date_data = start_date_data
+        self.end_date_data = end_date_data
+        self.start_date_cohort = start_date_cohort
+        self.end_date_cohort = end_date_cohort
+        self.file_path_mp = file_path_mp
+        self.ratio_maj_min_class = ratio_maj_min_class
+        self.cohort_size = cohort_size
+        self.sim_time = sim_time
+        self.ctrl_var = ctrl_var
+        self.ctrl_var_value = ctrl_var_value
+
+        self.data_loader = None
         self.epochs = epochs
         self.batch_size = batch_size
         self.learning_rate = learning_rate
@@ -26,8 +35,8 @@ class Experiments:
         self.LSTM_model = None
         self.use_time = use_time
         self.simulate = simulate
-        self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
-        self.ch_to_idx = self.data_loader.get_ch_to_idx_map()
+        self.idx_to_ch = {}
+        self.ch_to_idx = {}
         self.attributions = {}
         self.attributions_std = {}
         self.attributions_roi = {}
@@ -38,13 +47,49 @@ class Experiments:
         self.custom_attr_eval = custom_attr_eval
         self.total_budget = total_budget
 
+    def init_data_loader(self):
+        self.data_loader = ModelDataLoader(self.start_date_data, self.end_date_data, self.start_date_cohort, self.end_date_cohort,
+                                           self.file_path_mp, self.nr_top_ch, self.ratio_maj_min_class, self.simulate, self.cohort_size,
+                                           self.sim_time, self.ctrl_var, self.ctrl_var_value, self.eval_fw)
+        self.idx_to_ch = self.data_loader.get_idx_to_ch_map()
+        self.ch_to_idx = self.data_loader.get_ch_to_idx_map()
+
     def init_models(self):
         self.SP_model = SP()
         self.LTA_model = LTA()
         self.LR_model = LR()
         self.LSTM_model = LSTM(self.epochs, self.batch_size, self.learning_rate)
 
+    def validate_sim(self):
+        self.simulate = False
+        self.init_data_loader()
+        clients_data_train_real, clients_data_test_real = self.data_loader.get_clients_dict_split(self.train_prop)
+        x_train_real, y_train_real, x_test_real, y_test_real = self.data_loader.get_feature_matrix_split(self.train_prop, self.use_time)
+        seq_lists_train_real, labels_train_real, seq_lists_test_real, labels_test_real = self.data_loader.get_seq_lists_split(self.train_prop)
+
+        self.simulate = True
+        self.init_data_loader()
+        clients_data_train_sim, _ = self.data_loader.get_clients_dict_split(self.train_prop)
+        x_train_sim, y_train_sim, _, _ = self.data_loader.get_feature_matrix_split(self.train_prop, self.use_time)
+        seq_lists_train_sim, labels_train_sim, _, _ = self.data_loader.get_seq_lists_split(self.train_prop)
+
+        # Train on sim, test on real
+        self.init_models()
+        self.load_models(clients_data_train_sim, clients_data_test_real, x_train_sim, y_train_sim, x_test_real, y_test_real,
+                         seq_lists_train_sim, labels_train_sim, seq_lists_test_real, labels_test_real)
+        self.train_all()
+        self.validate()
+
+        # Train on real, test on real
+        self.simulate = False
+        self.init_models()
+        self.load_models(clients_data_train_real, clients_data_test_real, x_train_real, y_train_real, x_test_real, y_test_real,
+                         seq_lists_train_real, labels_train_real, seq_lists_test_real, labels_test_real)
+        self.train_all()
+        self.validate()
+
     def cv(self, nr_splits=5):
+        self.init_data_loader()
         train_prop = 1
         clients_data, _ = self.data_loader.get_clients_dict_split(train_prop)
         x, y, _, _ = self.data_loader.get_feature_matrix_split(train_prop, self.use_time)
@@ -174,6 +219,7 @@ class Experiments:
         return clients_data_train, clients_data_test
 
     def load_data(self):
+        self.init_data_loader()
         clients_data_train, clients_data_test = self.data_loader.get_clients_dict_split(self.train_prop)
         x_train, y_train, x_test, y_test = self.data_loader.get_feature_matrix_split(self.train_prop, self.use_time)
         seq_lists_train, labels_train, seq_lists_test, labels_test = self.data_loader.get_seq_lists_split(self.train_prop)
@@ -317,12 +363,12 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-10.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-19.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=3, day=9, hour=23, minute=59, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=3, day=18, hour=23, minute=59, tz='UTC')
 
-    start_date_cohort = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_cohort = pd.Timestamp(year=2021, month=2, day=28, hour=23, minute=59, tz='UTC')
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=7, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=3, day=5, hour=23, minute=59, tz='UTC')
 
     train_proportion = 0.8
     nr_top_ch = 10
@@ -340,7 +386,7 @@ if __name__ == '__main__':
 
     ctrl_var = None
     ctrl_var_value = None
-    eval_fw = True
+    eval_fw = False
     custom_attr_eval = {'google / cpc': 1,
                         'facebook / ad': 1,
                         'mecenat / partnership': 1,
@@ -353,11 +399,13 @@ if __name__ == '__main__':
                               file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
                               ctrl_var_value, eval_fw, total_budget, custom_attr_eval)
-    #experiments.cv()
-
+    experiments.validate_sim()
+    """
+    experiments.cv()
     experiments.init_models()
     experiments.load_data()
     experiments.train_all()
     experiments.load_attributions()
     experiments.validate()
     experiments.plot_attributions(print_sum_attr=False)
+    """
