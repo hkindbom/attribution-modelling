@@ -11,7 +11,7 @@ class Channel:
         self.exposure_intensity = exposure_intensity
 
 class Person:
-    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.8, moment_click_fact=1, moment_conv_fact=7):
+    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.8, moment_click_fact=1, moment_conv_fact=8):
         self.id = id
         self.click_prob = init_click_prob # probability of clicking when exposed
         self.conv_prob = init_conv_prob # probability of converting when clicked
@@ -167,7 +167,7 @@ class Simulator:
         self.ch_interact = np.ones((10, 10)).tolist()
 
 if __name__ == '__main__':
-    cohort_size = 10
+    cohort_size = 20
     sim_time = 30
 
     sim = Simulator(cohort_size, sim_time)
