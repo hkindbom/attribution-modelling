@@ -81,7 +81,7 @@ class Experiments:
         real_sim = pd.concat([real_df, sim_df], axis=1).fillna(0)
         real_sim['len'] = list(range(1, len(real_sim)+1))
         real_sim.plot(y=["real data", "sim data"], x='len', kind="bar")
-        plt.title('Conversion path lengths')
+        plt.title('Path lengths')
         plt.xlabel('Length')
         plt.ylabel('Frequency')
         plt.show()
