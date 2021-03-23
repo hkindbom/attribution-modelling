@@ -11,11 +11,13 @@ class Channel:
         self.exposure_intensity = exposure_intensity
 
 class Person:
-    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.8):
+    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.8, moment_click_fact=1, moment_conv_fact=7):
         self.id = id
         self.click_prob = init_click_prob # probability of clicking when exposed
         self.conv_prob = init_conv_prob # probability of converting when clicked
         self.max_prob = max_prob
+        self.moment_click_fact = moment_click_fact
+        self.moment_conv_fact = moment_conv_fact
         self.converted = False
         self.clicked_channels = []
         self.click_times = []
@@ -107,14 +109,13 @@ class Simulator:
         if person.converted:
             return
 
-        click_prob = person.click_prob + channel.click_prob_inc
+        click_prob = min(person.max_prob, person.click_prob + person.moment_click_fact * channel.click_prob_inc)
         clicked_ch = np.random.choice([True, False], p=[click_prob, 1 - click_prob])
         if clicked_ch:
+            conv_prob = min(person.max_prob, person.conv_prob + person.moment_conv_fact * channel.conv_prob_inc)
+            converted = np.random.choice([True, False], p=[conv_prob, 1 - conv_prob])
             person.register_click(channel, self.current_time, self.ch_interact)
             self.tot_spend += channel.cpc
-
-            conv_prob = min(person.max_prob, person.conv_prob + 7 * channel.conv_prob_inc)
-            converted = np.random.choice([True, False], p=[conv_prob, 1 - conv_prob])
             if converted:
                 person.converted = True
                 self.nr_conversions += 1
@@ -168,10 +169,10 @@ class Simulator:
 
 if __name__ == '__main__':
     cohort_size = 10
-    sim_time = 30
+    sim_time = 10
 
     sim = Simulator(cohort_size, sim_time)
     sim.run_simulation()
     sim.show_results()
-    data_dict = sim.get_data_dict_format(cohort_size//2, cohort_size//2)
+    data_dict = sim.get_data_dict_format(2, 2)
 
