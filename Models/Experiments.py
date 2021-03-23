@@ -111,7 +111,6 @@ class Experiments:
         self.validate()
 
         # Train on real, test on real
-        self.simulate = False
         self.init_models()
         self.load_models(clients_data_train_real, clients_data_test_real, x_train_real, y_train_real, x_test_real, y_test_real,
                          seq_lists_train_real, labels_train_real, seq_lists_test_real, labels_test_real)
