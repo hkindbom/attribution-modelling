@@ -25,7 +25,6 @@ class ModelDataLoader:
         self.balance_classes_late = balance_classes_late
         self.nr_pos_sim = nr_pos_sim
         self.nr_neg_sim = nr_neg_sim
-        self.ratio_maj_min_class = ratio_maj_min_class
         self.load_data()
 
     def load_data(self):
