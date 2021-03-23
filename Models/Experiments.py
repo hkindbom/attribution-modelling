@@ -74,13 +74,13 @@ class Experiments:
         sim_df = pd.DataFrame({'sim len': path_lengths_sim})
 
         real_df = real_df.groupby('real len', as_index=False).size()
-        real_df.rename(columns={"size": "real freq"}, inplace=True)
+        real_df.rename(columns={"size": "real data"}, inplace=True)
         sim_df = sim_df.groupby('sim len', as_index=False).size()
-        sim_df.rename(columns={"size": "sim freq"}, inplace=True)
+        sim_df.rename(columns={"size": "sim data"}, inplace=True)
 
         real_sim = pd.concat([real_df, sim_df], axis=1).fillna(0)
         real_sim['len'] = list(range(1, len(real_sim)+1))
-        real_sim.plot(y=["real freq", "sim freq"], x='len', kind="bar")
+        real_sim.plot(y=["real data", "sim data"], x='len', kind="bar")
         plt.title('Conversion path lengths')
         plt.xlabel('Length')
         plt.ylabel('Frequency')
