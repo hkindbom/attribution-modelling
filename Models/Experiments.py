@@ -406,9 +406,9 @@ if __name__ == '__main__':
     use_time = True
     total_budget = 5000
 
-    simulate = False
+    simulate = True
     cohort_size = 10000
-    sim_time = 100
+    sim_time = 10
 
     epochs = 10
     batch_size = 20
@@ -430,8 +430,8 @@ if __name__ == '__main__':
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
                               ctrl_var_value, eval_fw, total_budget, custom_attr_eval)
     experiments.validate_sim()
+    #experiments.cv()
     """
-    experiments.cv()
     experiments.init_models()
     experiments.load_data()
     experiments.train_all()

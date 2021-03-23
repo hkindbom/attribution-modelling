@@ -1,6 +1,5 @@
 import heapq
 import numpy as np
-from random import shuffle
 
 class Channel:
     def __init__(self, index, name, cpc, click_prob_inc, conv_prob_inc, exposure_intensity):
@@ -12,10 +11,11 @@ class Channel:
         self.exposure_intensity = exposure_intensity
 
 class Person:
-    def __init__(self, id, init_click_prob=0.01, init_conv_prob=0.02):
+    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.8):
         self.id = id
         self.click_prob = init_click_prob # probability of clicking when exposed
         self.conv_prob = init_conv_prob # probability of converting when clicked
+        self.max_prob = max_prob
         self.converted = False
         self.clicked_channels = []
         self.click_times = []
@@ -37,8 +37,8 @@ class Person:
             self.click_prob += ch_interact[channel_pre.index][channel_last.index] * channel_last.click_prob_inc
             self.conv_prob += ch_interact[channel_pre.index][channel_last.index] * channel_last.conv_prob_inc
 
-        self.click_prob = min(1, self.click_prob)
-        self.conv_prob = min(1, self.conv_prob)
+        self.click_prob = min(self.max_prob, self.click_prob)
+        self.conv_prob = min(self.max_prob, self.conv_prob)
 
 class Simulator:
     def __init__(self, cohort_size, sim_time):
@@ -107,12 +107,14 @@ class Simulator:
         if person.converted:
             return
 
-        clicked_ch = np.random.choice([True, False], p=[person.click_prob, 1 - person.click_prob])
+        click_prob = person.click_prob + channel.click_prob_inc
+        clicked_ch = np.random.choice([True, False], p=[click_prob, 1 - click_prob])
         if clicked_ch:
             person.register_click(channel, self.current_time, self.ch_interact)
             self.tot_spend += channel.cpc
 
-            converted = np.random.choice([True, False], p=[person.conv_prob, 1 - person.conv_prob])
+            conv_prob = min(person.max_prob, person.conv_prob + 7 * channel.conv_prob_inc)
+            converted = np.random.choice([True, False], p=[conv_prob, 1 - conv_prob])
             if converted:
                 person.converted = True
                 self.nr_conversions += 1
@@ -151,24 +153,25 @@ class Simulator:
 
     def create_channels(self):
         # index, name, cpc, click_prob_inc, conv_prob_inc, exposure_intensity
-        self.channels.append(Channel(0, '(direct) / (none)', 0, 0.05, 0.05, 0.3))
-        self.channels.append(Channel(1, 'adtraction / affiliate', 1, 0.05, 0.05, 0.2))
-        self.channels.append(Channel(2, 'facebook / ad', 2, 0.01, 0.01, 0.3))
-        self.channels.append(Channel(3, 'google / cpc', 3, 0.04, 0.04, 0.2))
-        self.channels.append(Channel(4, 'google / organic', 4, 0.04, 0.04, 0.2))
-        self.channels.append(Channel(5, 'mecenat / partnership', 5, 0.1, 0.1, 0.3))
-        self.channels.append(Channel(6, 'newsletter / email', 6, 0.2, 0.2, 0.2))
-        self.channels.append(Channel(7, 'snapchat / ad', 7, 0.0, 0.0, 0.05))
-        self.channels.append(Channel(8, 'studentkortet / partnership', 8, 0.15, 0.15, 0.2))
-        self.channels.append(Channel(9, 'tiktok / ad', 9, 0.0, 0.0, 0.1))
+        int_factor = 0.5
+        self.channels.append(Channel(0, '(direct) / (none)', 0, 0.06, 0.06, 0.15*int_factor))
+        self.channels.append(Channel(1, 'adtraction / affiliate', 1, 0.07, 0.07, 0.1*int_factor))
+        self.channels.append(Channel(2, 'facebook / ad', 2, 0.005, 0.005, 0.15*int_factor))
+        self.channels.append(Channel(3, 'google / cpc', 3, 0.055, 0.055, 0.1*int_factor))
+        self.channels.append(Channel(4, 'google / organic', 4, 0.055, 0.055, 0.1*int_factor))
+        self.channels.append(Channel(5, 'mecenat / partnership', 5, 0.08, 0.08, 0.15*int_factor))
+        self.channels.append(Channel(6, 'newsletter / email', 6, 0.1, 0.1, 0.1*int_factor))
+        self.channels.append(Channel(7, 'snapchat / ad', 7, 0.0, 0.0, 0.3*int_factor))
+        self.channels.append(Channel(8, 'studentkortet / partnership', 8, 0.07, 0.07, 0.1*int_factor))
+        self.channels.append(Channel(9, 'tiktok / ad', 9, 0.0, 0.0, 0.2*int_factor))
         self.ch_interact = np.ones((10, 10)).tolist()
 
 if __name__ == '__main__':
     cohort_size = 10
-    sim_time = 150
+    sim_time = 30
 
     sim = Simulator(cohort_size, sim_time)
     sim.run_simulation()
     sim.show_results()
-    data_dict = sim.get_data_dict_format()
+    data_dict = sim.get_data_dict_format(cohort_size//2, cohort_size//2)
 
