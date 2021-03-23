@@ -153,8 +153,7 @@ class Simulator:
         return ch_to_idx, idx_to_ch
 
     def create_channels(self):
-        # index, name, cpc, click_prob_inc, conv_prob_inc, exposure_intensity
-        int_factor = 0.5
+        int_factor = 0.5/3
         self.channels.append(Channel(0, '(direct) / (none)', 0, 0.06, 0.06, 0.15*int_factor))
         self.channels.append(Channel(1, 'adtraction / affiliate', 1, 0.07, 0.07, 0.1*int_factor))
         self.channels.append(Channel(2, 'facebook / ad', 2, 0.005, 0.005, 0.15*int_factor))
@@ -169,7 +168,7 @@ class Simulator:
 
 if __name__ == '__main__':
     cohort_size = 10
-    sim_time = 10
+    sim_time = 30
 
     sim = Simulator(cohort_size, sim_time)
     sim.run_simulation()

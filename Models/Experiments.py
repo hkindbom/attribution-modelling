@@ -406,9 +406,9 @@ if __name__ == '__main__':
     use_time = True
     total_budget = 5000
 
-    simulate = True
+    simulate = False
     cohort_size = 10000
-    sim_time = 10
+    sim_time = 30
 
     epochs = 10
     batch_size = 20
