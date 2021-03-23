@@ -60,6 +60,32 @@ class Experiments:
         self.LR_model = LR()
         self.LSTM_model = LSTM(self.epochs, self.batch_size, self.learning_rate)
 
+    def get_path_len(self, seq_lists):
+        path_lengths = []
+        for seq in seq_lists:
+            path_lengths.append(len(seq))
+        return path_lengths
+
+    def plot_path_lenghts(self, seq_lists_train_real, seq_lists_train_sim):
+        path_lengths_real = self.get_path_len(seq_lists_train_real)
+        path_lengths_sim = self.get_path_len(seq_lists_train_sim)
+
+        real_df = pd.DataFrame({'real len': path_lengths_real})
+        sim_df = pd.DataFrame({'sim len': path_lengths_sim})
+
+        real_df = real_df.groupby('real len', as_index=False).size()
+        real_df.rename(columns={"size": "real freq"}, inplace=True)
+        sim_df = sim_df.groupby('sim len', as_index=False).size()
+        sim_df.rename(columns={"size": "sim freq"}, inplace=True)
+
+        real_sim = pd.concat([real_df, sim_df], axis=1).fillna(0)
+        real_sim['len'] = list(range(1, len(real_sim)+1))
+        real_sim.plot(y=["real freq", "sim freq"], x='len', kind="bar")
+        plt.title('Conversion path lengths')
+        plt.xlabel('Length')
+        plt.ylabel('Frequency')
+        plt.show()
+
     def validate_sim(self):
         self.simulate = False
         self.init_data_loader()
@@ -74,6 +100,8 @@ class Experiments:
         clients_data_train_sim, _ = self.data_loader.get_clients_dict_split(self.train_prop)
         x_train_sim, y_train_sim, _, _ = self.data_loader.get_feature_matrix_split(self.train_prop, self.use_time)
         seq_lists_train_sim, labels_train_sim, _, _ = self.data_loader.get_seq_lists_split(self.train_prop)
+
+        self.plot_path_lenghts(seq_lists_train_real, seq_lists_train_sim)
 
         # Train on sim, test on real
         self.init_models()

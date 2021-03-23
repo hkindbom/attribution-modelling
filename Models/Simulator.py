@@ -64,30 +64,28 @@ class Simulator:
             self.create_new_event(event_ch, event_person_id)
         print('Simulation done')
 
-    def get_adjusted_nr_samples(self, persons, nr_pos_max, nr_neg_max):
+    def get_adjusted_nr_samples(self, persons_dict, nr_pos_max, nr_neg_max):
         if nr_pos_max is None or nr_neg_max is None:
-            return persons
-        shuffle(persons)
+            return persons_dict
         count_pos = 0
         count_neg = 0
-        filtered_persons = []
-        for person in persons:
-            if int(person.converted) and count_pos < nr_pos_max:
+        filtered_persons_dict = {}
+        for person_id in persons_dict:
+            if persons_dict[person_id]['label'] and count_pos < nr_pos_max:
                 count_pos += 1
-                filtered_persons.append(person)
-            if not int(person.converted) and count_neg < nr_neg_max:
+                filtered_persons_dict[person_id] = persons_dict[person_id]
+            if not persons_dict[person_id]['label'] and count_neg < nr_neg_max:
                 count_neg += 1
-                filtered_persons.append(person)
+                filtered_persons_dict[person_id] = persons_dict[person_id]
 
         print('Nr converted sim: ', count_pos, 'Nr non-converted sim: ', count_neg)
-        if nr_pos_max + nr_neg_max != len(filtered_persons):
+        if nr_pos_max + nr_neg_max != len(filtered_persons_dict):
             print('WARNING! Nr simulated samples don\'t match real data')
-        return filtered_persons
+        return filtered_persons_dict
 
     def get_data_dict_format(self, nr_pos, nr_neg):
-        persons = self.get_adjusted_nr_samples(self.persons, nr_pos, nr_neg)
         persons_dict = {}
-        for person in persons:
+        for person in self.persons:
             if len(person.click_times) > 0:
                 persons_dict[person.id] = {}
                 persons_dict[person.id]['label'] = int(person.converted)
@@ -96,7 +94,7 @@ class Simulator:
                 persons_dict[person.id]['session_channels'] = []
                 for channel in person.clicked_channels:
                     persons_dict[person.id]['session_channels'].append(channel.index)
-        return persons_dict
+        return self.get_adjusted_nr_samples(persons_dict, nr_pos, nr_neg)
 
     def show_results(self):
         for person in self.persons:
