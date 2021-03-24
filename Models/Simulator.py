@@ -184,5 +184,5 @@ if __name__ == '__main__':
     sim = Simulator(cohort_size, sim_time)
     sim.run_simulation()
     sim.show_results()
-    data_dict = sim.get_data_dict_format(2, 2)
+    data_dict = sim.get_data_dict_format(1, 2, 2)
 
