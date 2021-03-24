@@ -8,7 +8,7 @@ from collections import Counter
 class ModelDataLoader:
     def __init__(self, start_date_data, end_date_data, start_data_cohort, end_data_cohort,
                  file_path_mp, nr_top_ch=1000, ratio_maj_min_class=1, simulate=False, cohort_size=100, sim_time=100,
-                 ctrl_var=None, ctrl_var_value=None, balance_classes_late=False):
+                 ctrl_var=None, ctrl_var_value=None, balance_classes_late=False, nr_pos_sim=None, nr_neg_sim=None):
         self.data_processing = DataProcessing(start_date_data, end_date_data, start_data_cohort,
                                               end_data_cohort, file_path_mp, nr_top_ch=nr_top_ch,
                                               ratio_maj_min_class=ratio_maj_min_class)
@@ -23,6 +23,9 @@ class ModelDataLoader:
         self.cohort_size = cohort_size
         self.sim_time = sim_time
         self.balance_classes_late = balance_classes_late
+        self.nr_pos_sim = nr_pos_sim
+        self.nr_neg_sim = nr_neg_sim
+        self.ratio_maj_min_class = ratio_maj_min_class
         self.load_data()
 
     def load_data(self):
@@ -34,7 +37,7 @@ class ModelDataLoader:
     def load_sim_data(self):
         sim = Simulator(self.cohort_size, self.sim_time)
         sim.run_simulation()
-        self.clients_dict = sim.get_data_dict_format()
+        self.clients_dict = sim.get_data_dict_format(self.ratio_maj_min_class, self.nr_pos_sim, self.nr_neg_sim)
         self.ch_to_idx, self.idx_to_ch = sim.get_ch_idx_maps()
 
     def load_real_data(self):
@@ -45,7 +48,7 @@ class ModelDataLoader:
 
     def create_clients_dict(self, use_LTV=False):
         GA_temp = self.GA_df
-        self.create_idx_ch_map(GA_temp['source_medium'].unique().tolist())
+        self.create_idx_ch_map(GA_temp['source_medium'].sort_values().unique().tolist())
         for client_id, client_df in GA_temp.groupby(level=0):
             self.process_client_df(client_id, client_df, use_LTV)
 
