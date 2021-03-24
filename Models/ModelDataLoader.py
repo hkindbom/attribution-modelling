@@ -25,6 +25,7 @@ class ModelDataLoader:
         self.balance_classes_late = balance_classes_late
         self.nr_pos_sim = nr_pos_sim
         self.nr_neg_sim = nr_neg_sim
+        self.ratio_maj_min_class = ratio_maj_min_class
         self.load_data()
 
     def load_data(self):
@@ -36,7 +37,7 @@ class ModelDataLoader:
     def load_sim_data(self):
         sim = Simulator(self.cohort_size, self.sim_time)
         sim.run_simulation()
-        self.clients_dict = sim.get_data_dict_format(self.nr_pos_sim, self.nr_neg_sim)
+        self.clients_dict = sim.get_data_dict_format(self.ratio_maj_min_class, self.nr_pos_sim, self.nr_neg_sim)
         self.ch_to_idx, self.idx_to_ch = sim.get_ch_idx_maps()
 
     def load_real_data(self):

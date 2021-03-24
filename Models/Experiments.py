@@ -402,10 +402,10 @@ if __name__ == '__main__':
     train_proportion = 0.8
     nr_top_ch = 10
     ratio_maj_min_class = 1
-    use_time = True
+    use_time = False
     total_budget = 5000
 
-    simulate = False
+    simulate = True
     cohort_size = 10000
     sim_time = 30
 
@@ -437,4 +437,4 @@ if __name__ == '__main__':
     experiments.load_attributions()
     experiments.validate()
     experiments.plot_attributions(print_sum_attr=False)
-    """
+        """

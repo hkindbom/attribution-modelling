@@ -11,7 +11,7 @@ class Channel:
         self.exposure_intensity = exposure_intensity
 
 class Person:
-    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.8, moment_click_fact=1, moment_conv_fact=8):
+    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.85, moment_click_fact=1, moment_conv_fact=10):
         self.id = id
         self.click_prob = init_click_prob # probability of clicking when exposed
         self.conv_prob = init_conv_prob # probability of converting when clicked
@@ -66,9 +66,20 @@ class Simulator:
             self.create_new_event(event_ch, event_person_id)
         print('Simulation done')
 
-    def get_adjusted_nr_samples(self, persons_dict, nr_pos_max, nr_neg_max):
+    def get_ratio_adjusted(self, ratio_maj_min_class, persons_dict):
+        nr_per_class = np.zeros(2, dtype=int)
+        for person_id in persons_dict:
+            nr_per_class[persons_dict[person_id]['label']] += 1
+        min_class = np.argmin(nr_per_class)
+        nr_min = nr_per_class.min()
+        nr_max = int(nr_min * ratio_maj_min_class)
+        nr_pos_max = nr_min if min_class == 1 else nr_max
+        nr_neg_max = nr_min if min_class == 0 else nr_max
+        return nr_pos_max, nr_neg_max
+
+    def get_adjusted_nr_samples(self, persons_dict, ratio_maj_min_class, nr_pos_max, nr_neg_max):
         if nr_pos_max is None or nr_neg_max is None:
-            return persons_dict
+            nr_pos_max, nr_neg_max = self.get_ratio_adjusted(ratio_maj_min_class, persons_dict)
         count_pos = 0
         count_neg = 0
         filtered_persons_dict = {}
@@ -85,7 +96,7 @@ class Simulator:
             print('WARNING! Nr simulated samples don\'t match real data')
         return filtered_persons_dict
 
-    def get_data_dict_format(self, nr_pos, nr_neg):
+    def get_data_dict_format(self, ratio_maj_min_class, nr_pos, nr_neg):
         persons_dict = {}
         for person in self.persons:
             if len(person.click_times) > 0:
@@ -96,7 +107,7 @@ class Simulator:
                 persons_dict[person.id]['session_channels'] = []
                 for channel in person.clicked_channels:
                     persons_dict[person.id]['session_channels'].append(channel.index)
-        return self.get_adjusted_nr_samples(persons_dict, nr_pos, nr_neg)
+        return self.get_adjusted_nr_samples(persons_dict, ratio_maj_min_class, nr_pos, nr_neg)
 
     def show_results(self):
         for person in self.persons:
@@ -154,15 +165,15 @@ class Simulator:
 
     def create_channels(self):
         int_factor = 0.5/3
-        self.channels.append(Channel(0, '(direct) / (none)', 0, 0.06, 0.06, 0.15*int_factor))
-        self.channels.append(Channel(1, 'adtraction / affiliate', 1, 0.07, 0.07, 0.1*int_factor))
+        self.channels.append(Channel(0, '(direct) / (none)', 0, 0.055, 0.055, 0.15*int_factor))
+        self.channels.append(Channel(1, 'adtraction / affiliate', 1, 0.065, 0.065, 0.1*int_factor))
         self.channels.append(Channel(2, 'facebook / ad', 2, 0.005, 0.005, 0.15*int_factor))
         self.channels.append(Channel(3, 'google / cpc', 3, 0.055, 0.055, 0.1*int_factor))
         self.channels.append(Channel(4, 'google / organic', 4, 0.055, 0.055, 0.1*int_factor))
-        self.channels.append(Channel(5, 'mecenat / partnership', 5, 0.08, 0.08, 0.15*int_factor))
-        self.channels.append(Channel(6, 'newsletter / email', 6, 0.1, 0.1, 0.1*int_factor))
+        self.channels.append(Channel(5, 'mecenat / partnership', 5, 0.07, 0.07, 0.15*int_factor))
+        self.channels.append(Channel(6, 'newsletter / email', 6, 0.075, 0.075, 0.1*int_factor))
         self.channels.append(Channel(7, 'snapchat / ad', 7, 0.0, 0.0, 0.3*int_factor))
-        self.channels.append(Channel(8, 'studentkortet / partnership', 8, 0.07, 0.07, 0.1*int_factor))
+        self.channels.append(Channel(8, 'studentkortet / partnership', 8, 0.065, 0.065, 0.1*int_factor))
         self.channels.append(Channel(9, 'tiktok / ad', 9, 0.0, 0.0, 0.2*int_factor))
         self.ch_interact = np.ones((10, 10)).tolist()
 
