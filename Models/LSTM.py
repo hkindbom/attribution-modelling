@@ -73,15 +73,31 @@ class LSTM:
     def one_hot_encode_x(self, padded_data):
         return tf.one_hot(padded_data, self.nr_channels, on_value=1, off_value=0, axis=-1)
 
-    def get_normalized_attributions(self, use_shap=True):
-        unnorm_attr = self.get_non_normalized_attributions(use_shap)
+    def get_normalized_attributions(self, method='shap'):
+        unnorm_attr = self.get_non_normalized_attributions(method)
         norm_attr = [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
         return norm_attr
 
-    def get_non_normalized_attributions(self, use_shap=True):
-        if use_shap:
+    def get_non_normalized_attributions(self, method='shap'):
+        if method == 'shap':
             return self.get_shap_attributions()
+        if method == 'attention':
+            return self.get_attention_attributions()
         return self.get_removal_attributions()
+
+    # channel attributions by dividing attention for conversions by total channel occurrences
+    def get_attention_attributions(self):
+        attention_weights = self.get_attention_weights().numpy()
+        attributions = np.zeros(self.nr_channels)
+        ch_counts = np.ones(self.nr_channels)
+        x_train_preds = np.rint(self.get_preds(self.x_train).flatten()).astype(int)
+        for seq_idx, seq_attention in enumerate(attention_weights):
+            ch_counts[self.x_train_raw[seq_idx]] += 1
+            relevant_attention = seq_attention[:len(self.x_train_raw[seq_idx])]
+            if x_train_preds[seq_idx] == 1:
+                attributions[self.x_train_raw[seq_idx]] += relevant_attention / relevant_attention.sum()
+        attributions /= ch_counts
+        return attributions.tolist()
 
     def get_shap_attributions(self):
         explainer = shap.GradientExplainer(self.model, self.x_train.numpy())
@@ -153,12 +169,12 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-01.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-19.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=2, day=21, hour=23, minute=59, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=3, day=18, hour=23, minute=59, tz='UTC')
 
-    start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
-    end_date_cohort = pd.Timestamp(year=2021, month=2, day=13, hour=23, minute=59, tz='UTC')
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=7, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=3, day=5, hour=23, minute=59, tz='UTC')
 
     nr_top_ch = 10
     ratio_maj_min_class = 1
@@ -174,7 +190,7 @@ if __name__ == '__main__':
 
     x_train, y_train, x_test, y_test = data_loader.get_seq_lists_split(train_prop)
 
-    epochs = 10
+    epochs = 5
     batch_size = 20
     learning_rate = 0.001
     validation_split = 0.2
