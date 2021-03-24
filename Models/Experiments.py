@@ -406,7 +406,7 @@ if __name__ == '__main__':
     total_budget = 5000
 
     simulate = True
-    cohort_size = 10000
+    cohort_size = 12000
     sim_time = 30
 
     epochs = 10
@@ -437,4 +437,4 @@ if __name__ == '__main__':
     experiments.load_attributions()
     experiments.validate()
     experiments.plot_attributions(print_sum_attr=False)
-        """
+    """

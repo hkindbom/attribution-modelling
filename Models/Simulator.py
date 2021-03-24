@@ -164,17 +164,17 @@ class Simulator:
         return ch_to_idx, idx_to_ch
 
     def create_channels(self):
-        int_factor = 0.5/3
-        self.channels.append(Channel(0, '(direct) / (none)', 0, 0.055, 0.055, 0.15*int_factor))
-        self.channels.append(Channel(1, 'adtraction / affiliate', 1, 0.065, 0.065, 0.1*int_factor))
-        self.channels.append(Channel(2, 'facebook / ad', 2, 0.005, 0.005, 0.15*int_factor))
-        self.channels.append(Channel(3, 'google / cpc', 3, 0.055, 0.055, 0.1*int_factor))
-        self.channels.append(Channel(4, 'google / organic', 4, 0.055, 0.055, 0.1*int_factor))
-        self.channels.append(Channel(5, 'mecenat / partnership', 5, 0.07, 0.07, 0.15*int_factor))
-        self.channels.append(Channel(6, 'newsletter / email', 6, 0.075, 0.075, 0.1*int_factor))
-        self.channels.append(Channel(7, 'snapchat / ad', 7, 0.0, 0.0, 0.3*int_factor))
-        self.channels.append(Channel(8, 'studentkortet / partnership', 8, 0.065, 0.065, 0.1*int_factor))
-        self.channels.append(Channel(9, 'tiktok / ad', 9, 0.0, 0.0, 0.2*int_factor))
+        int_factor = 0.55/3
+        self.channels.append(Channel(0, '(direct) / (none)', 0, 0.055, 0.055, 0.1*int_factor))
+        self.channels.append(Channel(1, 'adtraction / affiliate', 1, 0.065, 0.065, 0.06*int_factor))
+        self.channels.append(Channel(2, 'facebook / ad', 2, 0.005, 0.005, 0.2*int_factor))
+        self.channels.append(Channel(3, 'google / cpc', 3, 0.055, 0.055, 0.15*int_factor))
+        self.channels.append(Channel(4, 'google / organic', 4, 0.055, 0.055, 0.15*int_factor))
+        self.channels.append(Channel(5, 'mecenat / partnership', 5, 0.07, 0.07, 0.07*int_factor))
+        self.channels.append(Channel(6, 'newsletter / email', 6, 0.075, 0.075, 0.06*int_factor))
+        self.channels.append(Channel(7, 'snapchat / ad', 7, 0.0, 0.0, 0.06*int_factor))
+        self.channels.append(Channel(8, 'studentkortet / partnership', 8, 0.065, 0.065, 0.06*int_factor))
+        self.channels.append(Channel(9, 'tiktok / ad', 9, 0.0, 0.0, 0.15*int_factor))
         self.ch_interact = np.ones((10, 10)).tolist()
 
 if __name__ == '__main__':
