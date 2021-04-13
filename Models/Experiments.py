@@ -38,6 +38,7 @@ class Experiments:
         self.idx_to_ch = {}
         self.ch_to_idx = {}
         self.attributions = {}
+        self.attribution_hist = {}
         self.attributions_std = {}
         self.attributions_mean_std = {}
         self.attributions_roi = {}
@@ -187,21 +188,20 @@ class Experiments:
         model_stats_filt.pop('fn')
         model_stats_filt.pop('tp')
         model_stats_filt.pop('model')
-        model_stats_filt.pop('attributions')
         return model_res_means, model_stats_filt
 
     def calc_mean_and_std_attr(self):
-        for model_name in self.model_stats:
-            self.attributions[model_name] = self.model_stats[model_name]['attributions'].mean(axis=0).tolist()
-            self.attributions_std[model_name] = self.model_stats[model_name]['attributions'].std(axis=0).tolist()
+        for model_name in self.attribution_hist:
+            self.attributions[model_name] = self.attribution_hist[model_name].mean(axis=0).tolist()
+            self.attributions_std[model_name] = self.attribution_hist[model_name].std(axis=0).tolist()
             self.attributions_mean_std[model_name] = sum(self.attributions_std[model_name]) / len(self.attributions_std[model_name])
 
     def collect_models_attr(self, nr_splits, split_idx):
         models_attr_dict = self.load_attributions(output=True)
         for model_name in models_attr_dict:
-            if 'attributions' not in self.model_stats[model_name]:
-                self.model_stats[model_name]['attributions'] = np.zeros((nr_splits, len(self.ch_to_idx)))
-            self.model_stats[model_name]['attributions'][split_idx] = np.array(models_attr_dict[model_name])
+            if model_name not in self.attribution_hist:
+                self.attribution_hist[model_name] = np.zeros((nr_splits, len(self.ch_to_idx)))
+            self.attribution_hist[model_name][split_idx] = np.array(models_attr_dict[model_name])
 
     def collect_models_pred_stats(self):
         models_res = self.validate(output=True)
@@ -305,8 +305,12 @@ class Experiments:
         SP_attr = self.SP_model.get_normalized_attributions()
         LTA_attr = self.LTA_model.get_normalized_attributions()
         LR_attr = self.LR_model.get_normalized_attributions()
-        LSTM_attr = self.LSTM_model.get_normalized_attributions()
-        attributions = {'SP': SP_attr, 'LTA': LTA_attr, 'LR': LR_attr, 'LSTM': LSTM_attr}
+        LSTM_attr_shap = self.LSTM_model.get_normalized_attributions('shap')
+        LSTM_attr_atten = self.LSTM_model.get_normalized_attributions('attention')
+        LSTM_attr_inc = self.LSTM_model.get_normalized_attributions('incremental')
+
+        attributions = {'SP': SP_attr, 'LTA': LTA_attr, 'LR': LR_attr, 'LSTM SHAP': LSTM_attr_shap,
+                        'LSTM Attention': LSTM_attr_atten, 'LSTM Incremental': LSTM_attr_inc}
         if output:
             return attributions
         self.attributions = attributions
@@ -315,8 +319,13 @@ class Experiments:
         SP_non_norm = self.SP_model.get_non_normalized_attributions()
         LTA_non_norm = self.LTA_model.get_non_normalized_attributions()
         LR_non_norm = self.LR_model.get_coefs()
-        LSTM_non_norm = self.LSTM_model.get_non_normalized_attributions()
-        return {'SP': sum(SP_non_norm), 'LTA': sum(LTA_non_norm), 'LR': sum(LR_non_norm), 'LSTM': sum(LSTM_non_norm)}
+        LSTM_non_norm_shap = self.LSTM_model.get_non_normalized_attributions('shap')
+        LSTM_non_norm_atten = self.LSTM_model.get_non_normalized_attributions('attention')
+        LSTM_non_norm_inc = self.LSTM_model.get_non_normalized_attributions('incremental')
+
+        return {'SP': sum(SP_non_norm), 'LTA': sum(LTA_non_norm), 'LR': sum(LR_non_norm),
+                'LSTM SHAP': sum(LSTM_non_norm_shap), 'LSTM Attention': LSTM_non_norm_atten,
+                'LSTM Incremental': LSTM_non_norm_inc}
 
     def plot_attributions(self, attributions=None, print_sum_attr=True, cv=False):
         channel_names = []
@@ -327,20 +336,24 @@ class Experiments:
             attributions = self.attributions
 
         df_means = pd.DataFrame({'Channel': channel_names,
-                           'LTA Attribution': attributions['LTA'],
-                           'SP Attribution': attributions['SP'],
-                           'LR Attribution': attributions['LR'],
-                           'LSTM Attribution': attributions['LSTM']})
+                           'LTA': attributions['LTA'],
+                           'SP': attributions['SP'],
+                           'LR': attributions['LR'],
+                           'LSTM SHAP': attributions['LSTM SHAP'],
+                           'LSTM Attention': attributions['LSTM Attention'],
+                           'LSTM Incremental': attributions['LSTM Incremental']})
         if self.simulate:
             true_attr = self.data_loader.get_true_norm_attributions()
             df_means['True Attribution'] = true_attr
             self.print_RSS(true_attr, attributions)
         if cv:
             print('Mean attribution std: ', self.attributions_mean_std)
-            df_std = pd.DataFrame({'LTA Attribution': self.attributions_std['LTA'],
-                                   'SP Attribution': self.attributions_std['SP'],
-                                   'LR Attribution': self.attributions_std['LR'],
-                                   'LSTM Attribution': self.attributions_std['LSTM']})
+            df_std = pd.DataFrame({'LTA': self.attributions_std['LTA'],
+                                   'SP': self.attributions_std['SP'],
+                                   'LR': self.attributions_std['LR'],
+                                   'LSTM SHAP': self.attributions_std['LSTM SHAP'],
+                                   'LSTM Attention': self.attributions_std['LSTM Attention'],
+                                   'LSTM Incremental': self.attributions_std['LSTM Incremental']})
             if self.simulate:
                 df_std['True Attribution'] = [0] * self.nr_top_ch
 
@@ -350,10 +363,12 @@ class Experiments:
 
         ax = df_means.plot.bar(x='Channel', rot=90, yerr=yerr, capsize=3)
         if print_sum_attr and not cv:
-            ax.legend(['LTA Attribution (sum ' + str(round(self.load_non_norm_attributions()['LTA'], 2)) + ')',
-                       'SP Attribution (sum ' + str(round(self.load_non_norm_attributions()['SP'], 2)) + ')',
-                       'LR Attribution (sum ' + str(round(self.load_non_norm_attributions()['LR'], 2)) + ')',
-                       'LSTM Attribution (sum ' + str(round(self.load_non_norm_attributions()['LSTM'], 2)) + ')'])
+            ax.legend(['LTA (sum ' + str(round(self.load_non_norm_attributions()['LTA'], 2)) + ')',
+                       'SP (sum ' + str(round(self.load_non_norm_attributions()['SP'], 2)) + ')',
+                       'LR (sum ' + str(round(self.load_non_norm_attributions()['LR'], 2)) + ')',
+                       'LSTM SHAP (sum ' + str(round(self.load_non_norm_attributions()['LSTM SHAP'], 2)) + ')',
+                       'LSTM Attention (sum ' + str(round(self.load_non_norm_attributions()['LSTM Attention'], 2)) + ')',
+                       'LSTM Incremental (sum ' + str(round(self.load_non_norm_attributions()['LSTM Incremental'], 2)) + ')'])
         ax.set_xlabel("Source / Medium")
         plt.tight_layout()
         plt.title('Attributions', fontsize=16)
@@ -421,7 +436,7 @@ if __name__ == '__main__':
     use_time = False
     total_budget = 5000
 
-    simulate = False
+    simulate = True#False
     cohort_size = 12000
     sim_time = 30
 
