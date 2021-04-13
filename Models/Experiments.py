@@ -436,7 +436,7 @@ if __name__ == '__main__':
     use_time = False
     total_budget = 5000
 
-    simulate = True#False
+    simulate = False
     cohort_size = 12000
     sim_time = 30
 
