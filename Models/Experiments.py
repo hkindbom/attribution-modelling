@@ -324,8 +324,8 @@ class Experiments:
         LSTM_non_norm_inc = self.LSTM_model.get_non_normalized_attributions('incremental')
 
         return {'SP': sum(SP_non_norm), 'LTA': sum(LTA_non_norm), 'LR': sum(LR_non_norm),
-                'LSTM SHAP': sum(LSTM_non_norm_shap), 'LSTM Attention': LSTM_non_norm_atten,
-                'LSTM Incremental': LSTM_non_norm_inc}
+                'LSTM SHAP': sum(LSTM_non_norm_shap), 'LSTM Attention': sum(LSTM_non_norm_atten),
+                'LSTM Incremental': sum(LSTM_non_norm_inc)}
 
     def plot_attributions(self, attributions=None, print_sum_attr=True, cv=False):
         channel_names = []
