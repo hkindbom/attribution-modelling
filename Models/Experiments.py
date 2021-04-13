@@ -331,12 +331,19 @@ class Experiments:
                            'SP Attribution': attributions['SP'],
                            'LR Attribution': attributions['LR'],
                            'LSTM Attribution': attributions['LSTM']})
+        if self.simulate:
+            true_attr = self.data_loader.get_true_norm_attributions()
+            df_means['True Attribution'] = true_attr
+            self.print_RSS(true_attr, attributions)
         if cv:
             print('Mean attribution std: ', self.attributions_mean_std)
             df_std = pd.DataFrame({'LTA Attribution': self.attributions_std['LTA'],
                                    'SP Attribution': self.attributions_std['SP'],
                                    'LR Attribution': self.attributions_std['LR'],
                                    'LSTM Attribution': self.attributions_std['LSTM']})
+            if self.simulate:
+                df_std['True Attribution'] = [0] * self.nr_top_ch
+
             yerr = df_std.values.T
         else:
             yerr = 0
@@ -352,6 +359,12 @@ class Experiments:
         plt.title('Attributions', fontsize=16)
         plt.show()
         self.plot_touchpoint_attributions()
+
+    def print_RSS(self, true_attr, attributions):
+        RSS = {}
+        for model_name in attributions:
+            RSS[model_name] = np.square(np.array(true_attr) - np.array(attributions[model_name])).sum()
+        print('Attributions RSS: ', RSS)
 
     def plot_touchpoint_attributions(self, max_seq_len=5):
         for seq_len in range(2, max_seq_len+1):
@@ -409,10 +422,10 @@ if __name__ == '__main__':
     total_budget = 5000
 
     simulate = True#False
-    cohort_size = 1000#12000
+    cohort_size = 12000
     sim_time = 30
 
-    epochs = 2#10
+    epochs = 10
     batch_size = 20
     learning_rate = 0.001
 

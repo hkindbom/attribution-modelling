@@ -22,6 +22,7 @@ class ModelDataLoader:
         self.simulate = simulate
         self.cohort_size = cohort_size
         self.sim_time = sim_time
+        self.true_norm_attr = []
         self.balance_classes_late = balance_classes_late
         self.nr_pos_sim = nr_pos_sim
         self.nr_neg_sim = nr_neg_sim
@@ -39,12 +40,16 @@ class ModelDataLoader:
         sim.run_simulation()
         self.clients_dict = sim.get_data_dict_format(self.ratio_maj_min_class, self.nr_pos_sim, self.nr_neg_sim)
         self.ch_to_idx, self.idx_to_ch = sim.get_ch_idx_maps()
+        self.true_norm_attr = sim.get_true_norm_attributions()
 
     def load_real_data(self):
         self.data_processing.process_all(self.ctrl_var, self.ctrl_var_value, self.balance_classes_late)
         self.GA_df = self.data_processing.get_GA_df()
         self.converted_clients_df = self.data_processing.get_converted_clients_df()
         self.create_clients_dict()
+
+    def get_true_norm_attributions(self):
+        return self.true_norm_attr
 
     def create_clients_dict(self, use_LTV=False):
         GA_temp = self.GA_df
