@@ -307,10 +307,10 @@ class Experiments:
         LR_attr = self.LR_model.get_normalized_attributions()
         LSTM_attr_shap = self.LSTM_model.get_normalized_attributions('shap')
         LSTM_attr_atten = self.LSTM_model.get_normalized_attributions('attention')
-        LSTM_attr_inc = self.LSTM_model.get_normalized_attributions('incremental')
+        LSTM_attr_frac = self.LSTM_model.get_normalized_attributions('fractional')
 
         attributions = {'SP': SP_attr, 'LTA': LTA_attr, 'LR': LR_attr, 'LSTM SHAP': LSTM_attr_shap,
-                        'LSTM Attention': LSTM_attr_atten, 'LSTM Incremental': LSTM_attr_inc}
+                        'LSTM Attention': LSTM_attr_atten, 'LSTM Fractional': LSTM_attr_frac}
         if output:
             return attributions
         self.attributions = attributions
@@ -321,11 +321,11 @@ class Experiments:
         LR_non_norm = self.LR_model.get_coefs()
         LSTM_non_norm_shap = self.LSTM_model.get_non_normalized_attributions('shap')
         LSTM_non_norm_atten = self.LSTM_model.get_non_normalized_attributions('attention')
-        LSTM_non_norm_inc = self.LSTM_model.get_non_normalized_attributions('incremental')
+        LSTM_non_norm_frac = self.LSTM_model.get_non_normalized_attributions('fractional')
 
         return {'SP': sum(SP_non_norm), 'LTA': sum(LTA_non_norm), 'LR': sum(LR_non_norm),
                 'LSTM SHAP': sum(LSTM_non_norm_shap), 'LSTM Attention': sum(LSTM_non_norm_atten),
-                'LSTM Incremental': sum(LSTM_non_norm_inc)}
+                'LSTM Fractional': sum(LSTM_non_norm_frac)}
 
     def plot_attributions(self, attributions=None, print_sum_attr=True, cv=False):
         channel_names = []
@@ -341,7 +341,7 @@ class Experiments:
                            'LR': attributions['LR'],
                            'LSTM SHAP': attributions['LSTM SHAP'],
                            'LSTM Attention': attributions['LSTM Attention'],
-                           'LSTM Incremental': attributions['LSTM Incremental']})
+                           'LSTM Fractional': attributions['LSTM Fractional']})
         if self.simulate:
             true_attr = self.data_loader.get_true_norm_attributions()
             df_means['True Attribution'] = true_attr
@@ -353,7 +353,7 @@ class Experiments:
                                    'LR': self.attributions_std['LR'],
                                    'LSTM SHAP': self.attributions_std['LSTM SHAP'],
                                    'LSTM Attention': self.attributions_std['LSTM Attention'],
-                                   'LSTM Incremental': self.attributions_std['LSTM Incremental']})
+                                   'LSTM Fractional': self.attributions_std['LSTM Fractional']})
             if self.simulate:
                 df_std['True Attribution'] = [0] * self.nr_top_ch
 
@@ -368,7 +368,7 @@ class Experiments:
                        'LR (sum ' + str(round(self.load_non_norm_attributions()['LR'], 2)) + ')',
                        'LSTM SHAP (sum ' + str(round(self.load_non_norm_attributions()['LSTM SHAP'], 2)) + ')',
                        'LSTM Attention (sum ' + str(round(self.load_non_norm_attributions()['LSTM Attention'], 2)) + ')',
-                       'LSTM Incremental (sum ' + str(round(self.load_non_norm_attributions()['LSTM Incremental'], 2)) + ')'])
+                       'LSTM Fractional (sum ' + str(round(self.load_non_norm_attributions()['LSTM Fractional'], 2)) + ')'])
         ax.set_xlabel("Source / Medium")
         plt.tight_layout()
         plt.title('Attributions', fontsize=16)
