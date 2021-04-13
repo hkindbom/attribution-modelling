@@ -39,6 +39,7 @@ class Experiments:
         self.ch_to_idx = {}
         self.attributions = {}
         self.attributions_std = {}
+        self.attributions_mean_std = {}
         self.attributions_roi = {}
         self.train_prop = train_prop
         self.nr_top_ch = nr_top_ch
@@ -193,6 +194,7 @@ class Experiments:
         for model_name in self.model_stats:
             self.attributions[model_name] = self.model_stats[model_name]['attributions'].mean(axis=0).tolist()
             self.attributions_std[model_name] = self.model_stats[model_name]['attributions'].std(axis=0).tolist()
+            self.attributions_mean_std[model_name] = sum(self.attributions_std[model_name]) / len(self.attributions_std[model_name])
 
     def collect_models_attr(self, nr_splits, split_idx):
         models_attr_dict = self.load_attributions(output=True)
@@ -330,6 +332,7 @@ class Experiments:
                            'LR Attribution': attributions['LR'],
                            'LSTM Attribution': attributions['LSTM']})
         if cv:
+            print('Mean attribution std: ', self.attributions_mean_std)
             df_std = pd.DataFrame({'LTA Attribution': self.attributions_std['LTA'],
                                    'SP Attribution': self.attributions_std['SP'],
                                    'LR Attribution': self.attributions_std['LR'],
@@ -405,11 +408,11 @@ if __name__ == '__main__':
     use_time = False
     total_budget = 5000
 
-    simulate = False
-    cohort_size = 12000
+    simulate = True#False
+    cohort_size = 1000#12000
     sim_time = 30
 
-    epochs = 10
+    epochs = 2#10
     batch_size = 20
     learning_rate = 0.001
 
