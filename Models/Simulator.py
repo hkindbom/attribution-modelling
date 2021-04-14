@@ -180,8 +180,7 @@ class Simulator:
     def get_true_norm_attributions(self):
         unnorm_attr = []
         for channel in self.channels:
-            attr = channel.click_prob_inc + channel.conv_prob_inc
-            unnorm_attr.append(attr)
+            unnorm_attr.append(channel.conv_prob_inc)
         return [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
 
 if __name__ == '__main__':
