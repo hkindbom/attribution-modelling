@@ -82,6 +82,7 @@ class ApiDataGA:
 
         self.GA_api_df = GA_api_df
         print('Read ', len(self.GA_api_df), ' datapoints from Google Analytics before processing')
+        print('Nr of unique users before processing: ', len(GA_api_df['dimension6'].unique()))
 
     def get_GA_df(self):
         return self.GA_api_df
@@ -181,16 +182,22 @@ class DataProcessing:
         self.GA_df = self.GA_df[~self.GA_df['client_id'].isin(clients_to_remove_df['client_id'])]
 
     def balance_classes_GA(self):
+        GA_temp = self.GA_df
+        nr_neg = GA_temp[GA_temp['converted_eventually'] == 0].index.get_level_values(0).to_series().nunique()
+        nr_pos = GA_temp[GA_temp['converted_eventually'] == 1].index.get_level_values(0).to_series().nunique()
+        print('Positive label counts before balancing: ', nr_pos)
+        print('Negative label counts before balancing: ', nr_neg)
+
         if self.ratio_maj_min_class is None:
             return
-        GA_temp = self.GA_df
-        class_counts = GA_temp['conversion'].value_counts()
-        major_label = class_counts.index.tolist()[0]
-        minor_label = class_counts.index.tolist()[1]
 
-        GA_major_downsampled = GA_temp.query('converted_eventually == ' +
-                                             str(major_label)).sample(round(class_counts[1] * self.ratio_maj_min_class))
-        GA_minority = GA_temp[GA_temp['converted_eventually'] == minor_label]
+        GA_nonconversions = GA_temp[GA_temp['converted_eventually'] == 0]
+        indices = list(set(GA_nonconversions.index.get_level_values(0).tolist()))[:round(nr_pos * self.ratio_maj_min_class)]
+        GA_major_downsampled = GA_nonconversions.loc[indices]
+        GA_minority = GA_temp[GA_temp['converted_eventually'] == 1]
+        print('Negative clients ', GA_major_downsampled.index.get_level_values(0).to_series().nunique(), ' and clicks ',
+              len(GA_major_downsampled['conversion']))
+        print('Positive clients ', GA_minority.index.get_level_values(0).to_series().nunique(), ' and clicks ', len(GA_minority['conversion']))
         self.GA_df = GA_minority.append(GA_major_downsampled).sort_index()
 
     def group_by_client_id(self):
@@ -370,6 +377,10 @@ class DataProcessing:
         bq_processor = ApiDataBigQuery(self.start_date_data, self.end_date_data)
         self.funnel_df = bq_processor.get_funnel_df()
 
+    def count_data_points(self):
+        print('Number of users after processing: ', len(self.GA_df))
+        print(self.GA_df.index.to_series().nunique())
+
     def save_to_csv(self):
         self.GA_df.to_csv(self.save_to_path, sep=',')
 
@@ -416,17 +427,18 @@ class DataProcessing:
             self.GA_unbalanced_df = self.GA_df.copy()
             self.balance_classes_GA()
 
+        self.count_data_points()
+
 
 if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-04.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-19.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=3, day=2, hour=23, minute=59, tz='UTC')
-
-    start_date_cohort = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_cohort = pd.Timestamp(year=2021, month=2, day=15, hour=23, minute=59, tz='UTC')
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=24, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=3, day=17, hour=23, minute=59, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=4, day=7, hour=23, minute=59, tz='UTC')
 
     data_processing = DataProcessing(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                                      file_path_mp, nr_top_ch=10, ratio_maj_min_class=1)

@@ -425,10 +425,9 @@ if __name__ == '__main__':
 
     file_path_mp = '../Data/Mixpanel_data_2021-03-19.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=3, day=18, hour=23, minute=59, tz='UTC')
-
-    start_date_cohort = pd.Timestamp(year=2021, month=2, day=7, hour=0, minute=0, tz='UTC')
-    end_date_cohort = pd.Timestamp(year=2021, month=3, day=5, hour=23, minute=59, tz='UTC')
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=24, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=3, day=17, hour=23, minute=59, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=4, day=7, hour=23, minute=59, tz='UTC')
 
     train_proportion = 0.8
     nr_top_ch = 10
