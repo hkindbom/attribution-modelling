@@ -260,4 +260,5 @@ if __name__ == '__main__':
 
     descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
     ctrl_vars_list = ['device_category', 'city', 'browser', 'operating_system']
-    descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_prop=0.1)
+    #descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_prop=0.1)
+    descriptives.show_interesting_results_GA()

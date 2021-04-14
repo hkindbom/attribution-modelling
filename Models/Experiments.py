@@ -374,8 +374,6 @@ class Experiments:
                        'LSTM Attention (sum ' + str(round(self.load_non_norm_attributions()['LSTM Attention'], 2)) + ')',
                        'LSTM Fractional (sum ' + str(round(self.load_non_norm_attributions()['LSTM Fractional'], 2)) + ')'])
         ax.set_xlabel("Channel")
-        #ax.set_xticklabels(['Direct', 'Facebook', 'Google paid', 'Google organic', 'LinkedIn', 'Mecenat', 'Newsletter',
-        #                    'Snapchat', 'Studentkortet', 'TikTok'])
         df_std.to_csv('df_std.csv')
         df_means.to_csv('df_means.csv')
 
@@ -393,6 +391,7 @@ class Experiments:
     def plot_touchpoint_attributions(self, max_seq_len=5):
         for seq_len in range(2, max_seq_len+1):
             touchpoint_attr = self.LSTM_model.get_touchpoint_attr(seq_len)
+            # print(touchpoint_attr)
             plt.plot(touchpoint_attr, marker='.', linewidth=2, markersize=12)
             plt.title('Touchpoint attention attributions')
             plt.xlabel('Touchpoint Index')
@@ -440,7 +439,7 @@ if __name__ == '__main__':
 
     train_proportion = 0.8
     nr_top_ch = 10
-    ratio_maj_min_class = None
+    ratio_maj_min_class = 1
     use_time = False
     total_budget = 5000
 
