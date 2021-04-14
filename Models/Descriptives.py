@@ -49,7 +49,7 @@ class Descriptives:
         cov = np.cov(x,y)[0][1]
         return cov / (np.std(x) * np.std(y)) if cov !=0 else 0
 
-    def show_ctrl_vars_corr(self, ctrl_vars_list, threshold_corr=-1., threshold_prop=0.):
+    def show_ctrl_vars_corr(self, ctrl_vars_list, threshold_corr=0., threshold_prop=0.):
         correlation_df = pd.DataFrame()
         channels = self.GA_df['source_medium'].value_counts().index
         for channel in channels:
@@ -60,7 +60,7 @@ class Descriptives:
                 for ctrl_var_value in ctrl_var_values:
                     ctrl_vector = np.array(ch_sessions_df[ctrl_var] == ctrl_var_value).astype(int)
                     corr_coef = self.corr_metric(channel_conv_vector, ctrl_vector)
-                    prop_ctrl_var_in_data = len(self.GA_df[self.GA_df[ctrl_var] == ctrl_var_value])/len(self.GA_df)
+                    prop_ctrl_var_in_data = len(self.GA_df[self.GA_df[ctrl_var] == ctrl_var_value])/len(self.GA_df) # Length is on session level
                     prop_ctrl_var_in_ch = np.sum(ctrl_vector)/len(ctrl_vector)
                     if prop_ctrl_var_in_data > threshold_prop and abs(corr_coef) > threshold_corr:
                         result_dict = {'channel': channel, 'ctrl-var': ctrl_var, 'ctrl-var-value': ctrl_var_value,
@@ -135,6 +135,7 @@ class Descriptives:
 
     def plot_perc_occur_conv_spend(self):
         cost_per_source_medium = self.GA_df.groupby(['source_medium']).agg('sum')['cost']
+        # print(cost_per_source_medium)
         cost_per_source_medium_perc = 100 * (cost_per_source_medium / cost_per_source_medium.sum())
         conversion_paths = self.get_conversion_paths()
 
@@ -258,6 +259,5 @@ if __name__ == '__main__':
     nr_top_ch = 10
 
     descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
-    descriptives.show_interesting_results_GA()
     ctrl_vars_list = ['device_category', 'city', 'browser', 'operating_system']
-    #descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_corr=0.2, threshold_prop=0.05)
+    descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_prop=0.1)

@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 from ModelDataLoader import ModelDataLoader
 from EvaluationFW import Evaluation
@@ -7,6 +8,9 @@ from SP import SP
 from LTA import LTA
 from LR import LR
 from LSTM import LSTM
+matplotlib.rcParams['font.serif'] = "Times New Roman"
+matplotlib.rcParams['font.family'] = "serif"
+matplotlib.rcParams.update({'font.size': 15})
 
 class Experiments:
 
@@ -369,7 +373,12 @@ class Experiments:
                        'LSTM SHAP (sum ' + str(round(self.load_non_norm_attributions()['LSTM SHAP'], 2)) + ')',
                        'LSTM Attention (sum ' + str(round(self.load_non_norm_attributions()['LSTM Attention'], 2)) + ')',
                        'LSTM Fractional (sum ' + str(round(self.load_non_norm_attributions()['LSTM Fractional'], 2)) + ')'])
-        ax.set_xlabel("Source / Medium")
+        ax.set_xlabel("Channel")
+        #ax.set_xticklabels(['Direct', 'Facebook', 'Google paid', 'Google organic', 'LinkedIn', 'Mecenat', 'Newsletter',
+        #                    'Snapchat', 'Studentkortet', 'TikTok'])
+        df_std.to_csv('df_std.csv')
+        df_means.to_csv('df_means.csv')
+
         plt.tight_layout()
         plt.title('Attributions', fontsize=16)
         plt.show()
@@ -386,8 +395,8 @@ class Experiments:
             touchpoint_attr = self.LSTM_model.get_touchpoint_attr(seq_len)
             plt.plot(touchpoint_attr, marker='.', linewidth=2, markersize=12)
             plt.title('Touchpoint attention attributions')
-            plt.xlabel('Touchpoint index')
-            plt.ylabel('Normalized attention')
+            plt.xlabel('Touchpoint Index')
+            plt.ylabel('Normalized Attention')
         plt.show()
 
     def add_custom_attr(self):
@@ -431,7 +440,7 @@ if __name__ == '__main__':
 
     train_proportion = 0.8
     nr_top_ch = 10
-    ratio_maj_min_class = 1
+    ratio_maj_min_class = None
     use_time = False
     total_budget = 5000
 
@@ -443,8 +452,8 @@ if __name__ == '__main__':
     batch_size = 20
     learning_rate = 0.001
 
-    ctrl_var = None
-    ctrl_var_value = None
+    ctrl_var = None #'device_category'
+    ctrl_var_value = None # 'mobile'
     eval_fw = False
     custom_attr_eval = {'google / cpc': 1,
                         'facebook / ad': 1,
@@ -460,11 +469,12 @@ if __name__ == '__main__':
                               ctrl_var_value, eval_fw, total_budget, custom_attr_eval)
     #experiments.validate_sim()
     experiments.cv()
-    """
+    '''
     experiments.init_models()
     experiments.load_data()
+    #print(experiments.idx_to_ch)
     experiments.train_all()
     experiments.load_attributions()
     experiments.validate()
     experiments.plot_attributions(print_sum_attr=False)
-    """
+    '''

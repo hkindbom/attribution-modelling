@@ -34,6 +34,7 @@ class SP:
     def calc_prob(self):
         for channel_idx in self.channel_value:
             self.prob[channel_idx] = self.channel_value[channel_idx] / self.channel_time[channel_idx]
+        #print('SP channel probabilities: ', self.prob)
 
     def get_prediction(self, client_id, clients_data):
         pred = 1
