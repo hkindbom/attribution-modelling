@@ -335,11 +335,13 @@ class DataProcessing:
         mixpanel_user.insert(0, 'client_id', client[0])
         self.converted_clients_df = self.converted_clients_df.append(mixpanel_user, ignore_index=True)
 
-    def estimate_client_LTV(self, w_premium=1, w_nr_co_insured=-5):
+    def estimate_client_LTV(self, w_premium=24, w_nr_co_insured=-300, w_is_student=-100):
         self.converted_clients_df['LTV'] = 0
         for index, client in self.converted_clients_df.iterrows():
-            self.converted_clients_df.loc[index, 'LTV'] = client['premium'] * w_premium \
-                                                          + client['nr_co_insured'] * w_nr_co_insured
+            is_student = 1 if client['business'] == 'STUDENT_RENT' or client['business'] == 'STUDENT_BRF' else 0
+            ltv = client['premium'] * w_premium + client['nr_co_insured'] * w_nr_co_insured + is_student * w_is_student
+
+            self.converted_clients_df.loc[index, 'LTV'] = ltv
 
     def assign_cost(self, free_mediums):
         self.GA_df['cost'] = 0

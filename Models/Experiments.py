@@ -442,7 +442,7 @@ if __name__ == '__main__':
     nr_top_ch = 10
     ratio_maj_min_class = 1
     use_time = False
-    total_budget = 5000
+    total_budget = 20000
 
     simulate = False
     cohort_size = 12000
@@ -454,22 +454,21 @@ if __name__ == '__main__':
 
     ctrl_var = None #'device_category'
     ctrl_var_value = None #'desktop'
-    eval_fw = False
-    custom_attr_eval = {'google / cpc': 1,
+    eval_fw = True
+    custom_attr_eval = {'google / cpc': 0,
                         'facebook / ad': 1,
-                        'mecenat / partnership': 1,
-                        'studentkortet / partnership': 1,
-                        'tiktok / ad': 1,
-                        'adtraction / affiliate': 1,
-                        'snapchat / ad': 1}
+                        'studentkortet / partnership': 0,
+                        'tiktok / ad': 0,
+                        'adtraction / affiliate': 0,
+                        'snapchat / ad': 0}
 
     experiments = Experiments(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                               file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
                               ctrl_var_value, eval_fw, total_budget, custom_attr_eval)
     #experiments.validate_sim()
-    #experiments.cv()
-
+    experiments.cv()
+    '''
     experiments.init_models()
     experiments.load_data()
     #print(experiments.idx_to_ch)
@@ -477,3 +476,4 @@ if __name__ == '__main__':
     experiments.load_attributions()
     experiments.validate()
     experiments.plot_attributions(print_sum_attr=True)
+    '''

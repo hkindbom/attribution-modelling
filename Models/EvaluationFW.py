@@ -16,6 +16,7 @@ class Evaluation:
         self.channels_roi = {}
         self.channels_budgets = {}
         self.channels_spend = None
+        self.non_matching_ltv = 0
 
     def normalize_spend_channels(self):
         channel_spend_series = self.GA_df.groupby(['source_medium']).agg('sum')['cost']
@@ -65,7 +66,8 @@ class Evaluation:
                         total_ltv += self.get_client_LTV(session['client_id'])
                 else:
                     client_blacklist.append(session['client_id'])
-
+        print('Budgets left after evaluation: ', self.channels_budgets)
+        print('Non-matched LTVs: ', self.non_matching_ltv)
         return {'tot_nr_conv': total_nr_conversions, 'tot_conv_val': total_conversion_value,
                 'tot_ltv': total_ltv, 'tot_cost': total_cost, 'tot_budget': self.total_budget}
 
@@ -79,7 +81,7 @@ class Evaluation:
         converted_client_df = self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client_id]
         if not converted_client_df.empty:
             return converted_client_df.iloc[0]['LTV']
-        print('Client not matched. No LTV found.')
+        self.non_matching_ltv += 1
         return 0
 
     def get_channels_roi(self):
