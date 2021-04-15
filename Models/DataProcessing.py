@@ -381,7 +381,7 @@ class DataProcessing:
         self.funnel_df = bq_processor.get_funnel_df()
 
     def count_data_points(self):
-        print('Number of users after processing: ', len(self.GA_df))
+        print('Number of clicks after processing: ', len(self.GA_df))
 
     def save_to_csv(self):
         self.GA_df.to_csv(self.save_to_path, sep=',')

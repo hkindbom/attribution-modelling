@@ -96,15 +96,14 @@ class Descriptives:
         print('Nr of paths of len>1 with different channels', count_diff_ch, '(', prop, '% of all positive conversions)')
 
     def plot_path_duration_GA(self, nr_bars=20):
-        csfont = {'fontname': 'Times New Roman'}
         conversion_paths = self.get_conversion_paths()
         path_duration = []
         for client, path in conversion_paths.groupby(level=0):
             path_duration.append((path['timestamp'][-1] - path['timestamp'][0]).total_seconds() / (3600 * 24))
         plt.hist(path_duration, nr_bars)
-        plt.title('Conversion path duration',**csfont)
-        plt.xlabel('Length [days]',**csfont)
-        plt.ylabel('Positive Customer Journeys',**csfont)
+        plt.title('Conversion path duration')
+        plt.xlabel('Length [days]')
+        plt.ylabel('Positive Customer Journeys')
         plt.show()
 
     def plot_channel_conversion_frequency_GA(self, normalize=True):
