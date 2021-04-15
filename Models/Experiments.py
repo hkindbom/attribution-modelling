@@ -304,6 +304,7 @@ class Experiments:
 
         print('Theoretical max accuracy on all data is: ', self.data_loader.get_theo_max_accuracy())
         print(results_df)
+        results_df.to_csv('predictive_performance.csv')
 
     def load_attributions(self, output=False):
         SP_attr = self.SP_model.get_normalized_attributions()
@@ -361,6 +362,7 @@ class Experiments:
             if self.simulate:
                 df_std['True Attribution'] = [0] * self.nr_top_ch
 
+            df_std.to_csv('df_std.csv')
             yerr = df_std.values.T
         else:
             yerr = 0
@@ -374,7 +376,6 @@ class Experiments:
                        'LSTM Attention (sum ' + str(round(self.load_non_norm_attributions()['LSTM Attention'], 2)) + ')',
                        'LSTM Fractional (sum ' + str(round(self.load_non_norm_attributions()['LSTM Fractional'], 2)) + ')'])
         ax.set_xlabel("Channel")
-        df_std.to_csv('df_std.csv')
         df_means.to_csv('df_means.csv')
 
         plt.tight_layout()
@@ -452,7 +453,7 @@ if __name__ == '__main__':
     learning_rate = 0.001
 
     ctrl_var = None #'device_category'
-    ctrl_var_value = None # 'mobile'
+    ctrl_var_value = None #'desktop'
     eval_fw = False
     custom_attr_eval = {'google / cpc': 1,
                         'facebook / ad': 1,
@@ -467,13 +468,12 @@ if __name__ == '__main__':
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
                               ctrl_var_value, eval_fw, total_budget, custom_attr_eval)
     #experiments.validate_sim()
-    experiments.cv()
-    '''
+    #experiments.cv()
+
     experiments.init_models()
     experiments.load_data()
     #print(experiments.idx_to_ch)
     experiments.train_all()
     experiments.load_attributions()
     experiments.validate()
-    experiments.plot_attributions(print_sum_attr=False)
-    '''
+    experiments.plot_attributions(print_sum_attr=True)

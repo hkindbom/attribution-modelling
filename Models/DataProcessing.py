@@ -417,6 +417,8 @@ class DataProcessing:
         self.drop_uncommon_channels()
         self.group_by_client_id()
         self.remove_post_conversion()
+        self.GA_df.to_csv('GA_df_before_balancing.csv')
+
         if not balance_classes_late:
             self.balance_classes_GA()
 

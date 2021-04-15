@@ -79,6 +79,7 @@ class Evaluation:
         converted_client_df = self.converted_clients_df.loc[self.converted_clients_df['client_id'] == client_id]
         if not converted_client_df.empty:
             return converted_client_df.iloc[0]['LTV']
+        print('Client not matched. No LTV found.')
         return 0
 
     def get_channels_roi(self):
