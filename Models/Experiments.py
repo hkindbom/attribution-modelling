@@ -454,7 +454,7 @@ if __name__ == '__main__':
 
     ctrl_var = None #'device_category'
     ctrl_var_value = None #'desktop'
-    eval_fw = True
+    eval_fw = False #True
     custom_attr_eval = {'google / cpc': 0,
                         'facebook / ad': 1,
                         'studentkortet / partnership': 0,
@@ -466,14 +466,14 @@ if __name__ == '__main__':
                               file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
                               ctrl_var_value, eval_fw, total_budget, custom_attr_eval)
-    #experiments.validate_sim()
-    experiments.cv()
-    '''
+    experiments.validate_sim()
+    #experiments.cv()
+    """
     experiments.init_models()
     experiments.load_data()
     #print(experiments.idx_to_ch)
     experiments.train_all()
     experiments.load_attributions()
     experiments.validate()
-    experiments.plot_attributions(print_sum_attr=True)
-    '''
+    experiments.plot_attributions(print_sum_attr=False)#True)
+    """
