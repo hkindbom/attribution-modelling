@@ -11,7 +11,7 @@ class Channel:
         self.exposure_intensity = exposure_intensity
 
 class Person:
-    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.85, moment_click_fact=1, moment_conv_fact=10):
+    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.85, moment_click_fact=1, moment_conv_fact=9):
         self.id = id
         self.click_prob = init_click_prob # probability of clicking when exposed
         self.conv_prob = init_conv_prob # probability of converting when clicked
@@ -164,7 +164,7 @@ class Simulator:
         return ch_to_idx, idx_to_ch
 
     def create_channels(self):
-        int_factor = 0.56/3
+        int_factor = 45/160
         self.channels.append(Channel(0, '(direct) / (none)', 0, 0.055, 0.055, 0.1*int_factor))
         self.channels.append(Channel(1, 'adtraction / affiliate', 1, 0.065, 0.065, 0.06*int_factor))
         self.channels.append(Channel(2, 'facebook / ad', 2, 0.005, 0.005, 0.2*int_factor))

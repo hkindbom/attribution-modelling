@@ -80,16 +80,16 @@ class Experiments:
         sim_df = pd.DataFrame({'sim len': path_lengths_sim})
 
         real_df = real_df.groupby('real len', as_index=False).size()
-        real_df.rename(columns={"size": "real data"}, inplace=True)
+        real_df.rename(columns={"size": "Real data"}, inplace=True)
         sim_df = sim_df.groupby('sim len', as_index=False).size()
-        sim_df.rename(columns={"size": "sim data"}, inplace=True)
+        sim_df.rename(columns={"size": "Synthetic data"}, inplace=True)
 
         real_sim = pd.concat([real_df, sim_df], axis=1).fillna(0)
         real_sim['len'] = list(range(1, len(real_sim)+1))
-        real_sim.plot(y=["real data", "sim data"], x='len', kind="bar")
+        real_sim.plot(y=["Real data", "Synthetic data"], x='len', kind="bar")
         plt.title('Path lengths')
-        plt.xlabel('Length')
-        plt.ylabel('Frequency')
+        plt.xlabel('Length [clicks]')
+        plt.ylabel('Customer Journeys')
         plt.show()
 
     def validate_sim(self):
@@ -444,9 +444,9 @@ if __name__ == '__main__':
     use_time = False
     total_budget = 20000
 
-    simulate = False
+    simulate = True #False
     cohort_size = 12000
-    sim_time = 30
+    sim_time = 22#35
 
     epochs = 10
     batch_size = 20
