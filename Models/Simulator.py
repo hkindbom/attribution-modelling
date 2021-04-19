@@ -11,7 +11,7 @@ class Channel:
         self.exposure_intensity = exposure_intensity
 
 class Person:
-    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.85, moment_click_fact=1, moment_conv_fact=9):
+    def __init__(self, id, init_click_prob=0.02, init_conv_prob=0.02, max_prob=0.85, moment_click_fact=1, moment_conv_fact=0.5):
         self.id = id
         self.click_prob = init_click_prob # probability of clicking when exposed
         self.conv_prob = init_conv_prob # probability of converting when clicked
@@ -164,7 +164,7 @@ class Simulator:
         return ch_to_idx, idx_to_ch
 
     def create_channels(self):
-        int_factor = 45/160
+        int_factor = 20/160 #45/160
         self.channels.append(Channel(0, '(direct) / (none)', 0, 0.055, 0.055, 0.1*int_factor))
         self.channels.append(Channel(1, 'adtraction / affiliate', 1, 0.065, 0.065, 0.06*int_factor))
         self.channels.append(Channel(2, 'facebook / ad', 2, 0.005, 0.005, 0.2*int_factor))
@@ -176,6 +176,16 @@ class Simulator:
         self.channels.append(Channel(8, 'studentkortet / partnership', 8, 0.065, 0.065, 0.06*int_factor))
         self.channels.append(Channel(9, 'tiktok / ad', 9, 0.0, 0.0, 0.15*int_factor))
         self.ch_interact = np.ones((10, 10)).tolist()
+        """
+        self.channels.append(Channel(0, 'TV ad', 0, 0.1, 0.1, 0.1 * int_factor))
+        self.channels.append(Channel(1, 'facebook / ad', 1, 0.01, 0.01, 0.2 * int_factor))
+        self.channels.append(Channel(2, 'google / cpc', 2, 0.12, 0.12, 0.13 * int_factor))
+        self.channels.append(Channel(3, 'newsletter / email', 3, 0.17, 0.17, 0.05 * int_factor))
+        self.ch_interact = [[1, 2, 2, 3],
+                            [1, 1, 2, 2],
+                            [1, 2, 1, 2],
+                            [1, 1, 1, 1]]
+        """
 
     def get_true_norm_attributions(self):
         unnorm_attr = []
@@ -184,8 +194,8 @@ class Simulator:
         return [attribution / sum(unnorm_attr) for attribution in unnorm_attr]
 
 if __name__ == '__main__':
-    cohort_size = 20
-    sim_time = 30
+    cohort_size = 10
+    sim_time = 100 #22
 
     sim = Simulator(cohort_size, sim_time)
     sim.run_simulation()

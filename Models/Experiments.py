@@ -445,8 +445,8 @@ if __name__ == '__main__':
     total_budget = 20000
 
     simulate = True #False
-    cohort_size = 12000
-    sim_time = 22
+    cohort_size = 40000#12000
+    sim_time = 100 #22
 
     epochs = 10
     batch_size = 20
@@ -467,8 +467,8 @@ if __name__ == '__main__':
                               simulate, cohort_size, sim_time, epochs, batch_size, learning_rate, ctrl_var,
                               ctrl_var_value, eval_fw, total_budget, custom_attr_eval)
     #experiments.validate_sim()
-    #experiments.cv()
-
+    experiments.cv()
+    """
     experiments.init_models()
     experiments.load_data()
     #print(experiments.idx_to_ch)
@@ -476,4 +476,4 @@ if __name__ == '__main__':
     experiments.load_attributions()
     experiments.validate()
     experiments.plot_attributions(print_sum_attr=False)#True)
-    
+    """
