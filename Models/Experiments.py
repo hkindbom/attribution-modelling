@@ -432,7 +432,7 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-19.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-04-20.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
     start_date_cohort = pd.Timestamp(year=2021, month=2, day=24, hour=0, minute=0, tz='UTC')
     end_date_cohort = pd.Timestamp(year=2021, month=3, day=17, hour=23, minute=59, tz='UTC')
@@ -444,7 +444,7 @@ if __name__ == '__main__':
     use_time = False
     total_budget = 20000
 
-    simulate = True #False
+    simulate = False
     cohort_size = 40000#12000
     sim_time = 100 #22
 
@@ -454,7 +454,7 @@ if __name__ == '__main__':
 
     ctrl_var = None #'device_category'
     ctrl_var_value = None #'desktop'
-    eval_fw = False #True
+    eval_fw = True
     custom_attr_eval = {'google / cpc': 0,
                         'facebook / ad': 1,
                         'studentkortet / partnership': 0,
