@@ -1,8 +1,12 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import matplotlib
 from sklearn.neighbors import KernelDensity
 from DataProcessing import DataProcessing
+matplotlib.rcParams['font.serif'] = "Times New Roman"
+matplotlib.rcParams['font.family'] = "serif"
+matplotlib.rcParams.update({'font.size': 15})
 
 
 class Descriptives:
@@ -45,7 +49,7 @@ class Descriptives:
         cov = np.cov(x,y)[0][1]
         return cov / (np.std(x) * np.std(y)) if cov !=0 else 0
 
-    def show_ctrl_vars_corr(self, ctrl_vars_list, threshold_corr=-1., threshold_prop=0.):
+    def show_ctrl_vars_corr(self, ctrl_vars_list, threshold_corr=0., threshold_prop=0.):
         correlation_df = pd.DataFrame()
         channels = self.GA_df['source_medium'].value_counts().index
         for channel in channels:
@@ -56,7 +60,7 @@ class Descriptives:
                 for ctrl_var_value in ctrl_var_values:
                     ctrl_vector = np.array(ch_sessions_df[ctrl_var] == ctrl_var_value).astype(int)
                     corr_coef = self.corr_metric(channel_conv_vector, ctrl_vector)
-                    prop_ctrl_var_in_data = len(self.GA_df[self.GA_df[ctrl_var] == ctrl_var_value])/len(self.GA_df)
+                    prop_ctrl_var_in_data = len(self.GA_df[self.GA_df[ctrl_var] == ctrl_var_value])/len(self.GA_df) # Length is on session level
                     prop_ctrl_var_in_ch = np.sum(ctrl_vector)/len(ctrl_vector)
                     if prop_ctrl_var_in_data > threshold_prop and abs(corr_coef) > threshold_corr:
                         result_dict = {'channel': channel, 'ctrl-var': ctrl_var, 'ctrl-var-value': ctrl_var_value,
@@ -75,8 +79,8 @@ class Descriptives:
         temp_df = pd.DataFrame({'freq': path_lengths})
         temp_df.groupby('freq', as_index=False).size().plot(x='freq', y='size', kind='bar', legend=False)
         plt.title('Conversion path lengths')
-        plt.xlabel('Length')
-        plt.ylabel('Frequency')
+        plt.xlabel('Length [clicks]')
+        plt.ylabel('Positive Customer Journeys')
         plt.show()
 
     def count_nr_ch_in_path(self):
@@ -88,8 +92,8 @@ class Descriptives:
                 count_tot_long_ch += 1
                 if len(path_df['source_medium'].unique())>1:
                     count_diff_ch += 1
-        prop = 100 * count_diff_ch / count_tot_long_ch
-        print('Nr of paths of len>1 with different channels', count_diff_ch, '(', prop, '%)')
+        prop = 100 * count_diff_ch / len(self.get_conversion_paths_last())
+        print('Nr of paths of len>1 with different channels', count_diff_ch, '(', prop, '% of all positive conversions)')
 
     def plot_path_duration_GA(self, nr_bars=20):
         conversion_paths = self.get_conversion_paths()
@@ -99,7 +103,7 @@ class Descriptives:
         plt.hist(path_duration, nr_bars)
         plt.title('Conversion path duration')
         plt.xlabel('Length [days]')
-        plt.ylabel('Frequency')
+        plt.ylabel('Positive Customer Journeys')
         plt.show()
 
     def plot_channel_conversion_frequency_GA(self, normalize=True):
@@ -130,6 +134,7 @@ class Descriptives:
 
     def plot_perc_occur_conv_spend(self):
         cost_per_source_medium = self.GA_df.groupby(['source_medium']).agg('sum')['cost']
+        # print(cost_per_source_medium)
         cost_per_source_medium_perc = 100 * (cost_per_source_medium / cost_per_source_medium.sum())
         conversion_paths = self.get_conversion_paths()
 
@@ -244,15 +249,15 @@ if __name__ == '__main__':
     pd.set_option('display.max_rows', None)
     pd.options.display.width = 0
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-04.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-03-19.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=3, day=3, hour=23, minute=59, tz='UTC')
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=24, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=3, day=17, hour=23, minute=59, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=4, day=7, hour=23, minute=59, tz='UTC')
 
-    start_date_cohort = pd.Timestamp(year=2021, month=2, day=5, hour=0, minute=0, tz='UTC')
-    end_date_cohort = pd.Timestamp(year=2021, month=2, day=20, hour=23, minute=59, tz='UTC')
     nr_top_ch = 10
 
     descriptives = Descriptives(start_date_data, end_date_data, start_date_cohort, end_date_cohort, file_path_mp, nr_top_ch)
-    descriptives.show_interesting_results_GA()
     ctrl_vars_list = ['device_category', 'city', 'browser', 'operating_system']
-    #descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_corr=0.2, threshold_prop=0.05)
+    #descriptives.show_ctrl_vars_corr(ctrl_vars_list, threshold_prop=0.1)
+    descriptives.show_interesting_results_GA()

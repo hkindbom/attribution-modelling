@@ -1,5 +1,6 @@
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib
 import numpy as np
 from ModelDataLoader import ModelDataLoader
 from EvaluationFW import Evaluation
@@ -7,6 +8,9 @@ from SP import SP
 from LTA import LTA
 from LR import LR
 from LSTM import LSTM
+matplotlib.rcParams['font.serif'] = "Times New Roman"
+matplotlib.rcParams['font.family'] = "serif"
+matplotlib.rcParams.update({'font.size': 15})
 
 class Experiments:
 
@@ -76,16 +80,16 @@ class Experiments:
         sim_df = pd.DataFrame({'sim len': path_lengths_sim})
 
         real_df = real_df.groupby('real len', as_index=False).size()
-        real_df.rename(columns={"size": "real data"}, inplace=True)
+        real_df.rename(columns={"size": "Real data"}, inplace=True)
         sim_df = sim_df.groupby('sim len', as_index=False).size()
-        sim_df.rename(columns={"size": "sim data"}, inplace=True)
+        sim_df.rename(columns={"size": "Synthetic data"}, inplace=True)
 
         real_sim = pd.concat([real_df, sim_df], axis=1).fillna(0)
         real_sim['len'] = list(range(1, len(real_sim)+1))
-        real_sim.plot(y=["real data", "sim data"], x='len', kind="bar")
+        real_sim.plot(y=["Real data", "Synthetic data"], x='len', kind="bar")
         plt.title('Path lengths')
-        plt.xlabel('Length')
-        plt.ylabel('Frequency')
+        plt.xlabel('Length [clicks]')
+        plt.ylabel('Customer Journeys')
         plt.show()
 
     def validate_sim(self):
@@ -300,6 +304,7 @@ class Experiments:
 
         print('Theoretical max accuracy on all data is: ', self.data_loader.get_theo_max_accuracy())
         print(results_df)
+        results_df.to_csv('predictive_performance.csv')
 
     def load_attributions(self, output=False):
         SP_attr = self.SP_model.get_normalized_attributions()
@@ -357,6 +362,7 @@ class Experiments:
             if self.simulate:
                 df_std['True Attribution'] = [0] * self.nr_top_ch
 
+            df_std.to_csv('df_std.csv')
             yerr = df_std.values.T
         else:
             yerr = 0
@@ -369,7 +375,9 @@ class Experiments:
                        'LSTM SHAP (sum ' + str(round(self.load_non_norm_attributions()['LSTM SHAP'], 2)) + ')',
                        'LSTM Attention (sum ' + str(round(self.load_non_norm_attributions()['LSTM Attention'], 2)) + ')',
                        'LSTM Fractional (sum ' + str(round(self.load_non_norm_attributions()['LSTM Fractional'], 2)) + ')'])
-        ax.set_xlabel("Source / Medium")
+        ax.set_xlabel("Channel")
+        df_means.to_csv('df_means.csv')
+
         plt.tight_layout()
         plt.title('Attributions', fontsize=16)
         plt.show()
@@ -384,10 +392,11 @@ class Experiments:
     def plot_touchpoint_attributions(self, max_seq_len=5):
         for seq_len in range(2, max_seq_len+1):
             touchpoint_attr = self.LSTM_model.get_touchpoint_attr(seq_len)
+            print(touchpoint_attr)
             plt.plot(touchpoint_attr, marker='.', linewidth=2, markersize=12)
             plt.title('Touchpoint attention attributions')
-            plt.xlabel('Touchpoint index')
-            plt.ylabel('Normalized attention')
+            plt.xlabel('Touchpoint Index')
+            plt.ylabel('Normalized Attention')
         plt.show()
 
     def add_custom_attr(self):
@@ -423,37 +432,35 @@ if __name__ == '__main__':
     pd.set_option('display.max_columns', None)
     pd.set_option('display.max_rows', None)
 
-    file_path_mp = '../Data/Mixpanel_data_2021-03-19.csv'
+    file_path_mp = '../Data/Mixpanel_data_2021-04-20.csv'
     start_date_data = pd.Timestamp(year=2021, month=2, day=3, hour=0, minute=0, tz='UTC')
-    end_date_data = pd.Timestamp(year=2021, month=3, day=18, hour=23, minute=59, tz='UTC')
-
-    start_date_cohort = pd.Timestamp(year=2021, month=2, day=7, hour=0, minute=0, tz='UTC')
-    end_date_cohort = pd.Timestamp(year=2021, month=3, day=5, hour=23, minute=59, tz='UTC')
+    start_date_cohort = pd.Timestamp(year=2021, month=2, day=24, hour=0, minute=0, tz='UTC')
+    end_date_cohort = pd.Timestamp(year=2021, month=3, day=17, hour=23, minute=59, tz='UTC')
+    end_date_data = pd.Timestamp(year=2021, month=4, day=7, hour=23, minute=59, tz='UTC')
 
     train_proportion = 0.8
     nr_top_ch = 10
     ratio_maj_min_class = 1
     use_time = False
-    total_budget = 5000
+    total_budget = 20000
 
     simulate = False
-    cohort_size = 12000
-    sim_time = 30
+    cohort_size = 40000#12000
+    sim_time = 100 #22
 
     epochs = 10
     batch_size = 20
     learning_rate = 0.001
 
-    ctrl_var = None
-    ctrl_var_value = None
-    eval_fw = False
-    custom_attr_eval = {'google / cpc': 1,
+    ctrl_var = None #'device_category'
+    ctrl_var_value = None #'desktop'
+    eval_fw = True
+    custom_attr_eval = {'google / cpc': 0,
                         'facebook / ad': 1,
-                        'mecenat / partnership': 1,
-                        'studentkortet / partnership': 1,
-                        'tiktok / ad': 1,
-                        'adtraction / affiliate': 1,
-                        'snapchat / ad': 1}
+                        'studentkortet / partnership': 0,
+                        'tiktok / ad': 0,
+                        'adtraction / affiliate': 0,
+                        'snapchat / ad': 0}
 
     experiments = Experiments(start_date_data, end_date_data, start_date_cohort, end_date_cohort,
                               file_path_mp, nr_top_ch, train_proportion, ratio_maj_min_class, use_time,
@@ -464,8 +471,9 @@ if __name__ == '__main__':
     """
     experiments.init_models()
     experiments.load_data()
+    #print(experiments.idx_to_ch)
     experiments.train_all()
     experiments.load_attributions()
     experiments.validate()
-    experiments.plot_attributions(print_sum_attr=False)
+    experiments.plot_attributions(print_sum_attr=False)#True)
     """
