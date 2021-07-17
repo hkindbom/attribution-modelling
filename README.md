@@ -11,11 +11,14 @@ Two reports have been written as part of
 in Computer Science and Engineering, specializing in Machine Learning, and
 - SF280X: Degree project in Optimization and Systems Theory.
 
-## Instructions
-All experiments are run from 'Experiments.py'. Exploratory data analysis is 
+## Content & Instructions
+All the code can be found in 'Models/' and the experiments are run from 'Experiments.py'. Exploratory data analysis is 
 conducted in 'Descriptives.py'. A few simulator parameters may be adjusted via
-'Simulator.py'.
+'Simulator.py'. 
 
+The reports may be found in 'Reports/', where 
+'Master_Thesis_Report_SF280X' is more applied and should preferably 
+be read before 'Master_Thesis_Report_DA233X'. 
 
 #### Authors/Developers
 Hannes Kindbom & Viktor Reineck
