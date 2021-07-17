@@ -14,7 +14,9 @@ in Computer Science and Engineering, specializing in Machine Learning, and
 ## Content & Instructions
 All the code can be found in 'Models/' and the experiments are run from 'Experiments.py'. Exploratory data analysis is 
 conducted in 'Descriptives.py'. A few simulator parameters may be adjusted via
-'Simulator.py'. 
+'Simulator.py'. However, no input data is provided in this repo, 
+wherefore data and API-keys must be supplied before all experiments
+ can be conducted. 
 
 The reports may be found in 'Reports/', where 
 'Master_Thesis_Report_SF280X' is more applied and should preferably 

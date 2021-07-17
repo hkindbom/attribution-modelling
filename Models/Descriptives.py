@@ -134,7 +134,6 @@ class Descriptives:
 
     def plot_perc_occur_conv_spend(self):
         cost_per_source_medium = self.GA_df.groupby(['source_medium']).agg('sum')['cost']
-        # print(cost_per_source_medium)
         cost_per_source_medium_perc = 100 * (cost_per_source_medium / cost_per_source_medium.sum())
         conversion_paths = self.get_conversion_paths()
 

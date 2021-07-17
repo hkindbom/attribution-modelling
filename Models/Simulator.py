@@ -176,16 +176,6 @@ class Simulator:
         self.channels.append(Channel(8, 'studentkortet / partnership', 8, 0.065, 0.065, 0.06*int_factor))
         self.channels.append(Channel(9, 'tiktok / ad', 9, 0.0, 0.0, 0.15*int_factor))
         self.ch_interact = np.ones((10, 10)).tolist()
-        """
-        self.channels.append(Channel(0, 'TV ad', 0, 0.1, 0.1, 0.1 * int_factor))
-        self.channels.append(Channel(1, 'facebook / ad', 1, 0.01, 0.01, 0.2 * int_factor))
-        self.channels.append(Channel(2, 'google / cpc', 2, 0.12, 0.12, 0.13 * int_factor))
-        self.channels.append(Channel(3, 'newsletter / email', 3, 0.17, 0.17, 0.05 * int_factor))
-        self.ch_interact = [[1, 2, 2, 3],
-                            [1, 1, 2, 2],
-                            [1, 2, 1, 2],
-                            [1, 1, 1, 1]]
-        """
 
     def get_true_norm_attributions(self):
         unnorm_attr = []
