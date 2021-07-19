@@ -304,7 +304,6 @@ class Experiments:
 
         print('Theoretical max accuracy on all data is: ', self.data_loader.get_theo_max_accuracy())
         print(results_df)
-        results_df.to_csv('predictive_performance.csv')
 
     def load_attributions(self, output=False):
         SP_attr = self.SP_model.get_normalized_attributions()

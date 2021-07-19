@@ -181,9 +181,6 @@ class DataProcessing:
             lambda source: len(source) < source_counts[self.nr_top_ch-1])
         self.GA_df = self.GA_df[~self.GA_df['client_id'].isin(clients_to_remove_df['client_id'])]
 
-        #print('Clicks per channel:')
-        #print(self.GA_df['source_medium'].value_counts())
-
     def balance_classes_GA(self):
         GA_temp = self.GA_df
         nr_neg = GA_temp[GA_temp['converted_eventually'] == 0].index.get_level_values(0).to_series().nunique()

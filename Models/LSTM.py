@@ -30,7 +30,6 @@ class LSTM:
         self.model.add(tf.keras.layers.Masking(mask_value=0, input_shape=(self.x_train.shape[1], self.x_train.shape[2])))
         self.model.add(keras.layers.LSTM(units=32, return_sequences=True))
         self.model.add(Attention(name='attention_weight'))
-        #self.model.add(keras.layers.Dense(units=64, activation='relu'))
         self.model.add(keras.layers.Dense(units=1, activation='sigmoid'))
 
         self.model.compile(loss=keras.losses.BinaryCrossentropy(from_logits=True),
